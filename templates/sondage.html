@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Épicéa — Sondage</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --noir: #0f0f0f;
+  --blanc: #f8f5ef;
+  --orange: #e85d04;
+  --gris: #6b6b6b;
+  --gris-clair: #e8e4dc;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--blanc);
+  color: var(--noir);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  padding-bottom: 2rem;
+}
+
+header {
+  background: var(--noir);
+  padding: 1rem 1.5rem;
+  text-align: center;
+}
+
+header h1 {
+  font-family: 'DM Serif Display', serif;
+  color: var(--blanc);
+  font-size: 1.2rem;
+}
+
+header h1 span { color: var(--orange); }
+
+.session-info {
+  background: var(--orange);
+  color: white;
+  padding: 0.6rem 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.container { max-width: 500px; margin: 0 auto; padding: 1.5rem; }
+
+.progress {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 2rem;
+}
+
+.progress-dot {
+  flex: 1;
+  height: 4px;
+  background: var(--gris-clair);
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+
+.progress-dot.done { background: var(--orange); }
+
+.question-block {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.question-block.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.question-num {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--orange);
+  margin-bottom: 0.5rem;
+}
+
+.question-titre {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.4rem;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+}
+
+.question-aide {
+  font-size: 0.85rem;
+  color: var(--gris);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.options { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.option {
+  padding: 0.9rem 1.1rem;
+  background: white;
+  border: 2px solid var(--gris-clair);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.option:hover { border-color: var(--orange); background: #fff8f0; }
+.option.selected { border-color: var(--orange); background: #fff3e0; font-weight: 500; }
+
+.option-desc {
+  font-size: 0.78rem;
+  color: var(--gris);
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 2px solid var(--gris-clair);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: 'DM Sans', sans-serif;
+  background: white;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-next {
+  background: var(--orange);
+  color: white;
+  flex: 1;
+}
+
+.btn-prev {
+  background: var(--gris-clair);
+  color: var(--noir);
+}
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Confirmation */
+.confirmation {
+  display: none;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.confirmation.active { display: block; }
+
+.check-icon {
+  width: 72px;
+  height: 72px;
+  background: var(--orange);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-size: 2rem;
+}
+
+.confirmation h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.confirmation p {
+  color: var(--gris);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Épicéa <span>Formation</span></h1>
+</header>
+
+<div class="session-info" id="session-info">Chargement...</div>
+
+<div class="container">
+
+  <div class="progress" id="progress">
+    <div class="progress-dot done"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+  </div>
+
+  <!-- Q0 : Prénom -->
+  <div class="question-block active" id="q0">
+    <div class="question-num">Bienvenue</div>
+    <div class="question-titre">Comment vous appelez-vous ?</div>
+    <div class="question-aide">Votre prénom permet au formateur de personnaliser les exemples.</div>
+    <input type="text" id="prenom" placeholder="Votre prénom">
+    <div class="nav">
+      <button class="btn btn-next" onclick="next(0)">Continuer →</button>
+    </div>
+  </div>
+
+  <!-- Q1 : Métier -->
+  <div class="question-block" id="q1">
+    <div class="question-num">Question 1 / 6</div>
+    <div class="question-titre">Quel est votre métier ?</div>
+    <div class="question-aide">Choisissez celui qui correspond le mieux à votre fonction principale.</div>
+    <div class="options">
+      <button class="option" onclick="select(this, 'q1')">
+        Électricien d'installation / chantier
+        <div class="option-desc">Pose, raccordement, mise en service</div>
+      </button>
+      <button class="option" onclick="select(this, 'q1')">
+        Électricien de maintenance
+        <div class="option-desc">Entretien, dépannage, remplacement</div>
+      </button>
+      <button class="option" onclick="select(this, 'q1')">
+        Technicien de maintenance (polyvalent)
+        <div class="option-desc">Maintenance générale avec volet électrique</div>
+      </button>
+      <button class="option" onclick="select(this, 'q1')">
+        Agent de production / opérateur
+        <div class="option-desc">Conduite de machines, interventions de 1er niveau</div>
+      </button>
+      <button class="option" onclick="select(this, 'q1')">
+        Chargé de travaux / chef d'équipe
+        <div class="option-desc">Direction et coordination d'équipes électriques</div>
+      </button>
+      <button class="option" onclick="select(this, 'q1')">
+        Technicien bureau d'études / électronique
+        <div class="option-desc">Cartes électroniques, alimentations, labo</div>
+      </button>
+    </div>
+    <div class="nav">
+      <button class="btn btn-prev" onclick="prev(1)">←</button>
+      <button class="btn btn-next" onclick="next(1)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- Q2 : Environnements (multi-choix) -->
+  <div class="question-block" id="q2">
+    <div class="question-num">Question 2 / 8</div>
+    <div class="question-titre">Dans quels environnements travaillez-vous ?</div>
+    <div class="question-aide">Sélectionnez tout ce qui correspond à vos lieux d'intervention.</div>
+    <div class="options">
+      <button class="option multi" onclick="toggleMulti(this, 'q2_environnements', 'industrie')">
+        Industrie
+        <div class="option-desc">Usine, atelier, process de production</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q2_environnements', 'btp')">
+        Chantier BTP
+        <div class="option-desc">Construction, génie civil, rénovation</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q2_environnements', 'tertiaire')">
+        Tertiaire
+        <div class="option-desc">Bureaux, commerces, hôtels, restaurants</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q2_environnements', 'sensible')">
+        Établissement sensible
+        <div class="option-desc">Hôpital, ERP, data center, école</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q2_environnements', 'infrastructures')">
+        Infrastructures / Réseaux
+        <div class="option-desc">Transport, énergie, distribution, voirie</div>
+      </button>
+    </div>
+    <div class="nav">
+      <button class="btn btn-prev" onclick="prev(2)">←</button>
+      <button class="btn btn-next" onclick="next(2)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- Q3 : Activités (multi-choix) -->
+  <div class="question-block" id="q3">
+    <div class="question-num">Question 3 / 8</div>
+    <div class="question-titre">Quelles activités électriques pratiquez-vous ?</div>
+    <div class="question-aide">Sélectionnez tout ce que vous faites, même occasionnellement.</div>
+    <div class="options">
+      <button class="option multi" onclick="toggleMulti(this, 'q3_activites', 'hors_tension')">
+        Travaux hors tension
+        <div class="option-desc">Je consigne, je vérifie l'absence de tension, je travaille</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q3_activites', 'intervention_bt')">
+        Interventions sous tension BT
+        <div class="option-desc">Je dépanne, je mesure, je remplace en présence de tension</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q3_activites', 'direction')">
+        Direction de travaux électriques
+        <div class="option-desc">Je planifie, j'encadre, je rédige les documents</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q3_activites', 'essais')">
+        Essais, vérifications, mesures
+        <div class="option-desc">Je contrôle la conformité, je teste les installations</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q3_activites', 'voisinage')">
+        Travail au voisinage électrique
+        <div class="option-desc">Je travaille près de pièces nues sous tension sans y toucher</div>
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q3_activites', 'electronique')">
+        Électronique et instrumentation
+        <div class="option-desc">Cartes, alimentations, équipements de mesure</div>
+      </button>
+    </div>
+    <div class="nav">
+      <button class="btn btn-prev" onclick="prev(3)">←</button>
+      <button class="btn btn-next" onclick="next(3)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- Q4 : Haute tension -->
+  <div class="question-block" id="q4">
+    <div class="question-num">Question 4 / 6</div>
+    <div class="question-titre">Êtes-vous exposé à la haute tension ?</div>
+    <div class="question-aide">La haute tension (HTA) commence à partir de 1000 V en alternatif.</div>
+    <div class="options">
+      <button class="option" onclick="select(this, 'q4', 'non')">
+        Non — uniquement basse tension
+        <div class="option-desc">Installations ≤ 1000 V AC</div>
+      </button>
+      <button class="option" onclick="select(this, 'q4', 'voisinage')">
+        Oui — mais je n'y touche pas
+        <div class="option-desc">HTA présente dans mon environnement de travail</div>
+      </button>
+      <button class="option" onclick="select(this, 'q4', 'intervention')">
+        Oui — j'interviens en HTA
+        <div class="option-desc">Postes, transformateurs, lignes HTA</div>
+      </button>
+    </div>
+    <div class="nav">
+      <button class="btn btn-prev" onclick="prev(4)">←</button>
+      <button class="btn btn-next" onclick="next(4)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- Q5 : Ancienneté -->
+  <div class="question-block" id="q5">
+    <div class="question-num">Question 5 / 8</div>
+    <div class="question-titre">Depuis combien de temps exercez-vous ce métier ?</div>
+    <div class="options">
+      <button class="option" onclick="select(this, 'q5', 'moins2')">
+        Moins de 2 ans
+      </button>
+      <button class="option" onclick="select(this, 'q5', '2a5')">
+        2 à 5 ans
+      </button>
+      <button class="option" onclick="select(this, 'q5', '5a10')">
+        5 à 10 ans
+      </button>
+      <button class="option" onclick="select(this, 'q5', 'plus10')">
+        Plus de 10 ans
+      </button>
+    </div>
+    <div class="nav">
+      <button class="btn btn-prev" onclick="prev(5)">←</button>
+      <button class="btn btn-next" onclick="next(5)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- Q6 : Tâches concrètes (multi-choix) -->
+  <div class="question-block" id="q6">
+    <div class="question-num">Question 6 / 8</div>
+    <div class="question-titre">Quelles tâches effectuez-vous concrètement ?</div>
+    <div class="question-aide">Sélectionnez tout ce qui correspond à votre travail quotidien.</div>
+    <div class="options">
+      <button class="option multi" onclick="toggleMulti(this, 'q6_taches', 'remplacement')">
+        Je remplace des composants : fusibles, prises, luminaires, appareillage
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q6_taches', 'depannage')">
+        Je dépanne en recherchant la panne (mesures sous tension)
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q6_taches', 'direction')">
+        Je dirige une équipe sur des travaux électriques
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q6_taches', 'essais')">
+        Je réalise des essais, vérifications, contrôles de conformité
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q6_taches', 'voisinage')">
+        Je travaille à proximité de pièces nues sous tension sans y toucher
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q6_taches', 'haute_tension')">
+        J'interviens sur des installations haute tension
+      </button>
+      <button class="option multi" onclick="toggleMulti(this, 'q6_taches', 'electronique')">
+        Je travaille sur des cartes électroniques, alimentations, équipements de labo
+      </button>
+    </div>
+    <div class="nav">
+      <button class="btn btn-prev" onclick="prev(6)">←</button>
+      <button class="btn btn-next" onclick="next(6)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- Q7 : Vécu électrisation -->
+  <div class="question-block" id="q7">
+    <div class="question-num">Question 7 / 8</div>
+    <div class="question-titre">Avez-vous déjà été électrisé ?</div>
+    <div class="question-aide">Au travail ou à la maison. Cette information aide le formateur à adapter les échanges.</div>
+    <div class="options">
+      <button class="option" onclick="select(this, 'q7', 'jamais')">
+        Non, jamais
+      </button>
+      <button class="option" onclick="select(this, 'q7', 'maison')">
+        Oui — à la maison
+      </button>
+      <button class="option" onclick="select(this, 'q7', 'travail')">
+        Oui — au travail
+      </button>
+      <button class="option" onclick="select(this, 'q7', 'travail_maison')">
+        Oui — au travail et à la maison
+      </button>
+    </div>
+
+    <!-- Q7b : urgences (conditionnel) -->
+    <div id="q7b-block" style="display:none; margin-top:1rem;">
+      <div class="question-aide" style="margin-bottom:0.8rem;">Avez-vous dû aller aux urgences suite à cette électrisation ?</div>
+      <div class="options">
+        <button class="option" onclick="select(this, 'q7_urgences', 'oui')">Oui, je suis allé aux urgences</button>
+        <button class="option" onclick="select(this, 'q7_urgences', 'non')">Non, pas nécessaire</button>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button class="btn btn-prev" onclick="prev(7)">←</button>
+      <button class="btn btn-next" onclick="next(7)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- Q8 : Dernière question - commentaire libre -->
+  <div class="question-block" id="q8">
+    <div class="question-num">Question 8 / 8</div>
+    <div class="question-titre">Un contexte particulier à signaler ?</div>
+    <div class="question-aide">Optionnel — situation spécifique, équipement particulier, contexte inhabituel.</div>
+    <input type="text" id="contexte_libre" placeholder="Ex : travaux en hauteur, espaces confinés, véhicules électriques...">
+    <div class="nav">
+      <button class="btn btn-prev" onclick="prev(8)">←</button>
+      <button class="btn btn-next" onclick="envoyer()">Envoyer ✓</button>
+    </div>
+  </div>
+
+  <!-- Confirmation -->
+  <div class="confirmation" id="confirmation">
+    <div class="check-icon">✓</div>
+    <h2>Merci !</h2>
+    <p>Vos réponses ont été transmises au formateur.<br>La formation va pouvoir commencer.</p>
+  </div>
+
+</div>
+
+<script>
+const SESSION_ID = "{{ session_id }}";
+const SESSION = {{ session|tojson if session else 'null' }};
+
+let reponses = {
+  prenom: '',
+  q1_metier: '',
+  q2_environnements: [],
+  q3_activites: [],
+  q4_haute_tension: '',
+  q5_anciennete: '',
+  q6_taches: [],
+  q7_electrise: '',
+  q7_urgences: '',
+  q8_contexte: '',
+};
+
+let etape = 0;
+
+if (SESSION) {
+  document.getElementById('session-info').textContent =
+    `${SESSION[1] || 'Formation'} — ${SESSION[2] || ''} ${SESSION[3] || ''}`.trim();
+}
+
+function updateProgress(etape) {
+  const dots = document.querySelectorAll('.progress-dot');
+  dots.forEach((d, i) => d.classList.toggle('done', i <= etape));
+}
+
+function select(btn, question, valeur) {
+  btn.closest('.options').querySelectorAll('.option:not(.multi)').forEach(o => o.classList.remove('selected'));
+  btn.classList.add('selected');
+  const val = valeur || btn.childNodes[0].textContent.trim();
+  reponses[question] = val;
+
+  // Afficher Q7b si électrisé
+  if (question === 'q7') {
+    const q7b = document.getElementById('q7b-block');
+    q7b.style.display = (val === 'jamais') ? 'none' : 'block';
+    if (val === 'jamais') reponses.q7_urgences = '';
+  }
+}
+
+function toggleMulti(btn, champ, valeur) {
+  btn.classList.toggle('selected');
+  if (!reponses[champ]) reponses[champ] = [];
+  if (btn.classList.contains('selected')) {
+    if (!reponses[champ].includes(valeur)) reponses[champ].push(valeur);
+  } else {
+    reponses[champ] = reponses[champ].filter(v => v !== valeur);
+  }
+}
+
+function showEtape(n) {
+  document.querySelectorAll('.question-block').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById(`q${n}`);
+  if (el) el.classList.add('active');
+  updateProgress(n);
+  etape = n;
+}
+
+function next(n) {
+  if (n === 0) {
+    reponses.prenom = document.getElementById('prenom').value.trim();
+    if (!reponses.prenom) { alert('Entrez votre prénom'); return; }
+  }
+  showEtape(n + 1);
+}
+
+function prev(n) { showEtape(n - 1); }
+
+async function envoyer() {
+  reponses.q8_contexte = document.getElementById('contexte_libre').value.trim();
+
+  try {
+    await fetch(`/api/reponses/${SESSION_ID}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(reponses)
+    });
+  } catch(e) {
+    console.error(e);
+  }
+
+  document.querySelectorAll('.question-block').forEach(b => b.classList.remove('active'));
+  document.getElementById('progress').style.display = 'none';
+  document.getElementById('confirmation').classList.add('active');
+}
+</script>
+</body>
+</html>

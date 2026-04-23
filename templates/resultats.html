@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Épicéa — Résultats</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --noir: #0f0f0f;
+  --blanc: #f8f5ef;
+  --orange: #e85d04;
+  --gris: #6b6b6b;
+  --gris-clair: #e8e4dc;
+  --rouge: #c1121f;
+  --vert: #2d6a4f;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--blanc);
+  color: var(--noir);
+  font-family: 'DM Sans', sans-serif;
+}
+
+header {
+  background: var(--noir);
+  padding: 1.2rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header h1 {
+  font-family: 'DM Serif Display', serif;
+  color: var(--blanc);
+  font-size: 1.3rem;
+}
+
+header h1 span { color: var(--orange); }
+
+.back-btn {
+  color: var(--gris);
+  text-decoration: none;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+main { max-width: 900px; margin: 0 auto; padding: 2rem; }
+
+/* Stats groupe */
+.stats-bar {
+  background: var(--noir);
+  color: var(--blanc);
+  border-radius: 10px;
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.stat-item { text-align: center; }
+
+.stat-val {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2rem;
+  color: var(--orange);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin-top: 0.2rem;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #888;
+  margin-left: auto;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: #4caf50;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Section titre */
+.section-titre {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+/* Profils */
+.profils-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.profil-chip {
+  background: white;
+  border: 1px solid var(--gris-clair);
+  border-radius: 2rem;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.profil-chip .nom { font-weight: 600; }
+.profil-chip .env {
+  color: var(--gris);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+}
+
+/* Cas recommandés */
+.cas-list { display: flex; flex-direction: column; gap: 1rem; }
+
+.cas-card {
+  background: white;
+  border: 1px solid var(--gris-clair);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.cas-card:hover { border-color: var(--orange); }
+
+.cas-header {
+  padding: 1rem 1.2rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  align-items: start;
+  cursor: pointer;
+}
+
+.cas-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--gris);
+  background: var(--gris-clair);
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.cas-resume {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #333;
+}
+
+.cas-erreur {
+  font-size: 0.82rem;
+  color: var(--rouge);
+  margin-top: 0.4rem;
+  font-style: italic;
+}
+
+.cas-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: flex-end;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+}
+
+.badge-orange { background: #fff3e0; color: var(--orange); }
+.badge-rouge { background: #ffebee; color: var(--rouge); }
+.badge-vert { background: #e8f5e9; color: var(--vert); }
+.badge-gris { background: var(--gris-clair); color: var(--gris); }
+
+/* Détail dépliable */
+.cas-detail {
+  display: none;
+  padding: 0 1.2rem 1.2rem;
+  border-top: 1px solid var(--gris-clair);
+}
+
+.cas-detail.open { display: block; }
+
+.detail-section { margin-top: 1rem; }
+
+.detail-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gris);
+  margin-bottom: 0.4rem;
+}
+
+.detail-content {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #333;
+}
+
+.questions-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.questions-list li {
+  padding: 0.7rem 1rem;
+  background: #fff8f0;
+  border-left: 3px solid var(--orange);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.tag {
+  padding: 0.2rem 0.6rem;
+  background: var(--gris-clair);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-family: 'DM Mono', monospace;
+  color: var(--gris);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--gris);
+}
+
+.refresh-info {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--gris);
+  margin-top: 1rem;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Épicéa <span>Formation</span></h1>
+  <a href="/formateur" class="back-btn">← Retour</a>
+</header>
+
+<main>
+
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-item">
+      <div class="stat-val" id="stat-stagiaires">—</div>
+      <div class="stat-label">Stagiaires</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="stat-ht">—</div>
+      <div class="stat-label">Exposés HT</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="stat-electrises">—</div>
+      <div class="stat-label">Déjà électrisés</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="stat-urgences">—</div>
+      <div class="stat-label">Aux urgences</div>
+    </div>
+    <div class="live-indicator">
+      <div class="live-dot"></div>
+      Mise à jour automatique
+    </div>
+  </div>
+
+  <!-- Profils -->
+  <div class="section-titre">Profils du groupe</div>
+  <div class="profils-grid" id="profils-grid">
+    <div style="color:var(--gris); font-size:0.85rem">En attente des réponses...</div>
+  </div>
+
+  <!-- Cas recommandés -->
+  <div class="section-titre">Cas recommandés pour ce groupe</div>
+  <div class="cas-list" id="cas-list">
+    <div class="empty-state">En attente des profils stagiaires...</div>
+  </div>
+
+  <div class="refresh-info">Actualisation automatique toutes les 15 secondes</div>
+
+</main>
+
+<script>
+const SESSION_ID = "{{ session_id }}";
+
+function graviteBadge(g) {
+  if (g === 'mortel') return '<span class="badge badge-rouge">⚫ Mortel</span>';
+  if (g === 'grave') return '<span class="badge badge-orange">🔴 Grave</span>';
+  if (g === 'léger') return '<span class="badge badge-vert">🟡 Léger</span>';
+  return '<span class="badge badge-gris">? Inconnu</span>';
+}
+
+function risqueBadge(r) {
+  const court = r.replace('contact direct ', '').replace(' électrique', '');
+  return `<span class="badge badge-orange">${court}</span>`;
+}
+
+async function charger() {
+  try {
+    const r = await fetch(`/api/resultats/${SESSION_ID}`);
+    const d = await r.json();
+
+    // Stats
+    document.getElementById('stat-stagiaires').textContent = d.stats.nb_stagiaires;
+    document.getElementById('stat-ht').textContent = d.stats.haute_tension;
+    document.getElementById('stat-electrises').textContent = d.stats.electrises || 0;
+    document.getElementById('stat-urgences').textContent = d.stats.urgences || 0;
+
+    // Profils
+    const profilsEl = document.getElementById('profils-grid');
+    if (d.profils.length === 0) {
+      profilsEl.innerHTML = '<div style="color:var(--gris); font-size:0.85rem">En attente des réponses...</div>';
+    } else {
+      profilsEl.innerHTML = d.profils.map(p => `
+        <div class="profil-chip">
+          <span class="nom">${p.prenom || '?'}</span>
+          <span class="env">${(p.q2_environnements || []).join(', ') || ''}</span>
+          ${p.q7_electrise && p.q7_electrise !== 'jamais' ? '<span style="color:var(--orange)">⚡</span>' : ''}
+        </div>
+      `).join('');
+    }
+
+    // Cas recommandés
+    const casEl = document.getElementById('cas-list');
+    if (d.recommandations.length === 0) {
+      casEl.innerHTML = '<div class="empty-state">En attente des profils stagiaires...</div>';
+    } else {
+      casEl.innerHTML = d.recommandations.map((cas, i) => `
+        <div class="cas-card">
+          <div class="cas-header" onclick="toggleDetail(${i})">
+            <div>
+              <div class="cas-num">N° ${cas.numero}</div>
+            </div>
+            <div>
+              <div class="cas-resume">${cas.resume_pedagogique}</div>
+              <div class="cas-erreur">↳ ${cas.erreur_declenchante}</div>
+            </div>
+            <div class="cas-badges">
+              ${graviteBadge(cas.gravite)}
+              ${risqueBadge(cas.type_risque)}
+            </div>
+          </div>
+          <div class="cas-detail" id="detail-${i}">
+            <div class="detail-section">
+              <div class="detail-label">Cause organisationnelle</div>
+              <div class="detail-content">${cas.cause_organisationnelle || '—'}</div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-label">Questions d'animation</div>
+              <ul class="questions-list">
+                ${(cas.questions_animation || []).map(q => `<li>${q}</li>`).join('')}
+              </ul>
+            </div>
+            <div class="detail-section">
+              <div class="detail-label">Habilitations concernées</div>
+              <div class="detail-content">${(cas.habilitations_concernees || []).join(', ') || '—'}</div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-label">Références normatives</div>
+              <div class="tags-list">
+                ${(cas.tags_norme || []).map(t => `<span class="tag">${t}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function toggleDetail(i) {
+  const el = document.getElementById(`detail-${i}`);
+  el.classList.toggle('open');
+}
+
+charger();
+setInterval(charger, 15000);
+</script>
+</body>
+</html>

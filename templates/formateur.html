@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Épicéa Formation — Formateur</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --noir: #0f0f0f;
+  --blanc: #f8f5ef;
+  --orange: #e85d04;
+  --orange-clair: #ffd166;
+  --gris: #6b6b6b;
+  --gris-clair: #e8e4dc;
+  --rouge: #c1121f;
+  --vert: #2d6a4f;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--blanc);
+  color: var(--noir);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+
+header {
+  background: var(--noir);
+  padding: 1.2rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header h1 {
+  font-family: 'DM Serif Display', serif;
+  color: var(--blanc);
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+}
+
+header h1 span { color: var(--orange); }
+
+.corpus-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--gris);
+  background: #1a1a1a;
+  padding: 0.3rem 0.8rem;
+  border-radius: 2rem;
+}
+
+main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+/* ── Créer session ── */
+.section-titre {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.6rem;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.03em;
+}
+
+.card {
+  background: white;
+  border: 1px solid var(--gris-clair);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.form-group.full { grid-column: 1 / -1; }
+
+label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gris);
+}
+
+input, select {
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid var(--gris-clair);
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  background: var(--blanc);
+  transition: border-color 0.2s;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--orange);
+  color: white;
+}
+
+.btn-primary:hover { background: #c44d00; }
+
+.btn-outline {
+  background: transparent;
+  color: var(--noir);
+  border: 1.5px solid var(--noir);
+}
+
+.btn-outline:hover { background: var(--noir); color: white; }
+
+/* ── Sessions list ── */
+.sessions-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.session-card {
+  background: white;
+  border: 1px solid var(--gris-clair);
+  border-radius: 8px;
+  padding: 1.2rem 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 1rem;
+  transition: border-color 0.2s;
+}
+
+.session-card:hover { border-color: var(--orange); }
+
+.session-info h3 {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+}
+
+.session-meta {
+  font-size: 0.8rem;
+  color: var(--gris);
+  font-family: 'DM Mono', monospace;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+}
+
+.badge-orange { background: #fff3e0; color: var(--orange); }
+.badge-vert { background: #e8f5e9; color: var(--vert); }
+.badge-rouge { background: #ffebee; color: var(--rouge); }
+.badge-gris { background: var(--gris-clair); color: var(--gris); }
+
+.session-actions { display: flex; gap: 0.5rem; }
+
+/* ── Modal QR ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+}
+
+.modal h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.modal p { color: var(--gris); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+.qr-container {
+  background: var(--blanc);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.qr-container img { width: 200px; height: 200px; }
+
+.qr-url {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--gris);
+  word-break: break-all;
+  margin-bottom: 1.5rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--gris-clair);
+}
+
+.tab {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gris);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+
+.tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--gris);
+}
+
+.empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Épicéa <span>Formation</span></h1>
+  <div class="corpus-badge" id="corpus-badge">Chargement...</div>
+</header>
+
+<main>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('sessions')">Sessions</div>
+    <div class="tab" onclick="showTab('nouvelle')">Nouvelle session</div>
+  </div>
+
+  <!-- Tab Sessions -->
+  <div class="tab-content active" id="tab-sessions">
+    <p class="section-titre">Mes sessions</p>
+    <div class="sessions-grid" id="sessions-list">
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <p>Aucune session pour l'instant.<br>Créez votre première session.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Nouvelle session -->
+  <div class="tab-content" id="tab-nouvelle">
+    <p class="section-titre">Nouvelle session</p>
+    <div class="card">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nom de la formation</label>
+          <input type="text" id="nom" placeholder="Habilitation B1/B2/BR">
+        </div>
+        <div class="form-group">
+          <label>Client / Entreprise</label>
+          <input type="text" id="client" placeholder="Nom de l'entreprise">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="date">
+        </div>
+        <div class="form-group">
+          <label>Habilitation principale visée</label>
+          <select id="habilitation">
+            <option value="">— Choisir —</option>
+            <option value="B0/H0">B0 / H0 — Voisinage</option>
+            <option value="B1/B2">B1 / B2 — Exécutant / Chargé travaux BT</option>
+            <option value="BR">BR — Interventions BT</option>
+            <option value="BE">BE — Essais / Mesures</option>
+            <option value="H1/H2/HR">H1 / H2 / HR — Haute tension</option>
+            <option value="mixte">Plusieurs niveaux</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="creerSession()">Créer la session →</button>
+    </div>
+  </div>
+</main>
+
+<!-- Modal QR -->
+<div class="modal-overlay" id="modal-qr">
+  <div class="modal">
+    <h2>Session créée ✓</h2>
+    <p>Partagez ce QR code avec vos stagiaires</p>
+    <div class="qr-container">
+      <img id="qr-img" src="" alt="QR Code">
+    </div>
+    <div class="qr-url" id="qr-url"></div>
+    <div style="display:flex; gap:0.5rem; justify-content:center">
+      <button class="btn btn-outline" onclick="fermerModal()">Fermer</button>
+      <button class="btn btn-primary" onclick="voirResultats()">Voir les résultats →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let sessionCourante = null;
+
+async function chargerCorpusStats() {
+  const r = await fetch('/api/corpus/stats');
+  const d = await r.json();
+  document.getElementById('corpus-badge').textContent =
+    `${d.total} cas · ${d.haute_pertinence} haute pertinence`;
+}
+
+function showTab(nom) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['sessions','nouvelle'][i] === nom);
+  });
+  document.querySelectorAll('.tab-content').forEach((t, i) => {
+    t.classList.toggle('active', ['tab-sessions','tab-nouvelle'][i] === `tab-${nom}`);
+  });
+  if (nom === 'sessions') chargerSessions();
+}
+
+async function chargerSessions() {
+  const r = await fetch('/api/sessions');
+  const sessions = await r.json();
+  const container = document.getElementById('sessions-list');
+
+  if (sessions.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="icon">📋</div>
+      <p>Aucune session.<br>Créez votre première session.</p>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = sessions.map(s => `
+    <div class="session-card">
+      <div class="session-info">
+        <h3>${s.nom || 'Sans titre'}</h3>
+        <div class="session-meta">
+          ${s.client ? s.client + ' · ' : ''}${s.date || ''} · ID: ${s.id}
+        </div>
+      </div>
+      <div>
+        <span class="badge ${s.nb_reponses > 0 ? 'badge-vert' : 'badge-gris'}">
+          ${s.nb_reponses} stagiaire${s.nb_reponses > 1 ? 's' : ''}
+        </span>
+      </div>
+      <div class="session-actions">
+        <button class="btn btn-outline" onclick="afficherQR('${s.id}')">QR</button>
+        <button class="btn btn-primary" onclick="window.location='/resultats/${s.id}'">Résultats →</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function creerSession() {
+  const nom = document.getElementById('nom').value;
+  const client = document.getElementById('client').value;
+  const date = document.getElementById('date').value;
+  const habilitation = document.getElementById('habilitation').value;
+
+  if (!nom) { alert('Donnez un nom à la session'); return; }
+
+  const r = await fetch('/api/sessions', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({nom, client, date, habilitation})
+  });
+  const d = await r.json();
+  sessionCourante = d.id;
+  await afficherQR(d.id);
+}
+
+async function afficherQR(sessionId) {
+  sessionCourante = sessionId;
+  const r = await fetch(`/api/sessions/${sessionId}/qr`);
+  const d = await r.json();
+  document.getElementById('qr-img').src = `data:image/png;base64,${d.qr}`;
+  document.getElementById('qr-url').textContent = d.url;
+  document.getElementById('modal-qr').classList.add('active');
+}
+
+function fermerModal() {
+  document.getElementById('modal-qr').classList.remove('active');
+  showTab('sessions');
+}
+
+function voirResultats() {
+  window.location = `/resultats/${sessionCourante}`;
+}
+
+chargerCorpusStats();
+chargerSessions();
+
+// Date par défaut
+document.getElementById('date').valueAsDate = new Date();
+</script>
+</body>
+</html>
