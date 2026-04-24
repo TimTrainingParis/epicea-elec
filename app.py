@@ -266,8 +266,8 @@ def save_reponse(session_id):
     c = conn.cursor()
     c.execute("""
         INSERT INTO reponses
-        (session_id, prenom, q1_metier, q2_activite, q3_environnement,
-         q4_haute_tension, q5_anciennete, q6_taches, created_at)
+        (session_id, prenom, q1_metier, q2_environnements, q3_activites,
+         q4_haute_tension, q5_anciennete, q6_taches, q7_electrise, q7_urgences, q8_contexte, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         session_id,
