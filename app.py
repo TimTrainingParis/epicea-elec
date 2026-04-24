@@ -46,8 +46,9 @@ def init_db():
             created_at TEXT
         )
     """)
+    c.execute("DROP TABLE IF EXISTS reponses")
     c.execute("""
-        CREATE TABLE IF NOT EXISTS reponses (
+        CREATE TABLE reponses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT,
             prenom TEXT,
