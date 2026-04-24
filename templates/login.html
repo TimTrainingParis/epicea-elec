@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Épicéa Formation — Connexion</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0f0f0f;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+}
+.card {
+  background: #f8f5ef;
+  border-radius: 12px;
+  padding: 2.5rem;
+  width: 340px;
+  text-align: center;
+}
+h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
+}
+h1 span { color: #e85d04; }
+p { color: #6b6b6b; font-size: 0.9rem; margin-bottom: 2rem; }
+input[type="password"] {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 2px solid #e8e4dc;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: 'DM Sans', sans-serif;
+  margin-bottom: 1rem;
+  background: white;
+}
+input[type="password"]:focus {
+  outline: none;
+  border-color: #e85d04;
+}
+button {
+  width: 100%;
+  padding: 0.8rem;
+  background: #e85d04;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+.erreur {
+  color: #c1121f;
+  font-size: 0.85rem;
+  margin-top: 0.8rem;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Épicéa <span>Formation</span></h1>
+  <p>Espace formateur</p>
+  <form method="POST">
+    <input type="password" name="password" placeholder="Mot de passe" autofocus>
+    <button type="submit">Connexion →</button>
+    {% if erreur %}
+    <div class="erreur">{{ erreur }}</div>
+    {% endif %}
+  </form>
+</div>
+</body>
+</html>

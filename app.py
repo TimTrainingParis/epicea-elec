@@ -3,7 +3,8 @@
 Épicéa Formation — Backend Flask
 """
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
+from functools import wraps
 import json
 import sqlite3
 import uuid
@@ -14,6 +15,16 @@ import base64
 from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = "epicea-formation-2026"
+MOT_DE_PASSE = "lik@m@-yet"
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "epicea.db")
 JSON_PATH = os.path.join(BASE_DIR, "epicea_enrichi.json")
@@ -64,18 +75,26 @@ def init_db():
             created_at TEXT
         )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS cas_utilises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client TEXT,
+            unid TEXT,
+            used_at TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
 init_db()
 
 # ── Moteur de matching ────────────────────────────────────
-MAPPING_ACTIVITE_HABILITATION = {
-    "remplacement": ["B1", "B1V", "B2", "BR"],
+MAPPING_TACHES_HABILITATIONS = {
+    "remplacement": ["B1", "B1V", "BR"],
     "depannage": ["BR", "B2", "B2V"],
     "direction": ["B2", "B2V", "BC"],
     "essais": ["BE mesure", "BE essai", "BE vérification"],
-    "voisinage": ["B0", "H0"],
+    "voisinage": ["B0", "H0", "BF", "HF"],
     "haute_tension": ["H1", "H1V", "H2", "H2V", "HR", "HC"],
     "electronique": ["BR", "BE mesure"],
 }
@@ -83,73 +102,216 @@ MAPPING_ACTIVITE_HABILITATION = {
 MAPPING_ENVIRONNEMENT_SECTEUR = {
     "industrie": ["industrie"],
     "btp": ["BTP"],
-    "tertiaire": ["tertiaire", "services"],
+    "tertiaire": ["tertiaire", "services", "commerce"],
     "sensible": ["tertiaire", "services", "collectivite"],
     "infrastructures": ["transport", "industrie"],
-    "mixte": None,
 }
 
-def calculer_score(fiche, profils_groupe):
-    """Calcule un score de pertinence pour une fiche selon les profils du groupe."""
-    score = 0
+MAPPING_ACTIVITE_RISQUE = {
+    "hors_tension": ["contact direct BTA", "arc électrique", "court-circuit"],
+    "intervention_bt": ["contact direct BTA", "arc électrique", "court-circuit"],
+    "direction": ["contact direct BTA", "arc électrique", "contact direct HTA"],
+    "essais": ["contact direct BTA", "arc électrique", "induction"],
+    "voisinage": ["contact direct BTA", "contact direct HTA", "induction"],
+    "electronique": ["contact direct BTA", "court-circuit"],
+    "haute_tension": ["contact direct HTA", "arc électrique", "induction"],
+}
 
-    # Pertinence électrique de base
-    p = fiche.get("pertinence_electrique", "faible")
-    if p == "haute":
-        score += 30
-    elif p == "moyenne":
-        score += 10
+SECTEURS_DOMESTIQUES = ["transport", "services", "tertiaire", "commerce"]
+
+def calculer_score_electrique(fiche, profils_groupe):
+    score = 0
+    type_risque = fiche.get("type_risque", "")
+    secteur_fiche = fiche.get("secteur_normalise", "")
+    habs_fiche = fiche.get("habilitations_concernees", [])
+    pertinence = fiche.get("pertinence_electrique", "faible")
+    gravite = fiche.get("gravite", "")
+
+    if pertinence == "faible":
+        return 0
+    if type_risque in ["non electrique", "non électrique"]:
+        return 0
 
     for profil in profils_groupe:
-        # Match habilitations
-        habs_fiche = fiche.get("habilitations_concernees", [])
-        taches = profil.get("q6_taches", "")
-        for tache, habs in MAPPING_ACTIVITE_HABILITATION.items():
-            if tache in taches:
-                for h in habs:
-                    if h in habs_fiche:
-                        score += 15
-
-        # Match environnement / secteur
-        env = profil.get("q3_environnement", "")
-        secteurs_cibles = MAPPING_ENVIRONNEMENT_SECTEUR.get(env, None)
-        secteur_fiche = fiche.get("secteur_normalise", "")
-        if secteurs_cibles and secteur_fiche in secteurs_cibles:
-            score += 20
-
-        # Haute tension
         ht = profil.get("q4_haute_tension", "non")
-        if ht != "non" and fiche.get("type_risque", "").startswith("contact direct HTA"):
-            score += 15
-
-        # Électronique
-        if "electronique" in taches and "electronique" in fiche.get("type_risque", ""):
-            score += 20
-
-        # Ancienneté — les expérimentés → accidents par banalisation
+        taches = profil.get("q6_taches", [])
+        activites = profil.get("q3_activites", [])
+        environnements = profil.get("q2_environnements", [])
         anciennete = profil.get("q5_anciennete", "")
-        if "10" in anciennete and fiche.get("gravite") == "mortel":
+
+        if ht == "non":
+            # Exclure HTA seulement si TOUS les profils sont BT
+            tous_bt = all(p.get("q4_haute_tension", "non") == "non" for p in profils_groupe)
+            if tous_bt:
+                if type_risque in ["contact direct HTA", "vehicule electrique"]:
+                    return 0
+                if any(h in habs_fiche for h in ["H1", "H1V", "H2", "H2V", "HR", "HC"]):
+                    return 0
+
+        if ht == "voisinage":
+            if any(h in habs_fiche for h in ["H2", "H2V", "HR", "HC"]):
+                score -= 20
+
+        for env in environnements:
+            secteurs_cibles = MAPPING_ENVIRONNEMENT_SECTEUR.get(env, [])
+            if secteur_fiche in secteurs_cibles:
+                score += 40
+                break
+
+        for activite in activites:
+            risques_cibles = MAPPING_ACTIVITE_RISQUE.get(activite, [])
+            if type_risque in risques_cibles:
+                score += 30
+                break
+
+        for tache in taches:
+            habs_cibles = MAPPING_TACHES_HABILITATIONS.get(tache, [])
+            for h in habs_cibles:
+                if h in habs_fiche:
+                    score += 25
+                    break
+
+        if pertinence == "haute":
+            score += 20
+        elif pertinence == "moyenne":
+            score += 5
+
+        if anciennete in ["5a10", "plus10"] and gravite == "mortel":
             score += 10
+        if anciennete == "moins2" and gravite == "léger":
+            score += 10
+
+    if pertinence == "moyenne":
+        score = score // 2
 
     return score
 
-def calculer_recommandations(profils, nb=8):
-    """Retourne les N fiches les mieux scorées pour un groupe."""
+
+def selectionner_cas_non_electrique(profils):
+    candidats = [
+        d for d in CORPUS
+        if d.get("type_risque") in ["non electrique", "non électrique"]
+        and d.get("pertinence_electrique") != "faible"
+        and d.get("resume_pedagogique")
+    ]
+    if not candidats:
+        return None
+
+    environnements_groupe = set()
+    for p in profils:
+        environnements_groupe.update(p.get("q2_environnements", []))
+
+    for env in environnements_groupe:
+        secteurs_cibles = MAPPING_ENVIRONNEMENT_SECTEUR.get(env, [])
+        matches = [c for c in candidats if c.get("secteur_normalise") in secteurs_cibles]
+        if matches:
+            graves = [m for m in matches if m.get("gravite") in ["mortel", "grave"]]
+            return graves[0] if graves else matches[0]
+
+    domestiques = [c for c in candidats if c.get("secteur_normalise") in SECTEURS_DOMESTIQUES]
+    if domestiques:
+        graves = [d for d in domestiques if d.get("gravite") in ["mortel", "grave"]]
+        return graves[0] if graves else domestiques[0]
+
+    return candidats[0]
+
+
+def get_cas_utilises():
+    """Récupère les UNIDs utilisés ce mois-ci."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        SELECT unid FROM cas_utilises
+        WHERE used_at >= date('now', '-30 days')
+    """)
+    rows = c.fetchall()
+    conn.close()
+    return set(r[0] for r in rows)
+
+def sauvegarder_cas_utilises(unids):
+    """Sauvegarde les UNIDs utilisés."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    from datetime import datetime as dt
+    for unid in unids:
+        c.execute("""
+            INSERT INTO cas_utilises (client, unid, used_at)
+            VALUES (?, ?, ?)
+        """, ("", unid, dt.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+def calculer_recommandations(profils, nb=8, client=None):
     if not profils:
         return []
+    
+    cas_deja_vus = get_cas_utilises()
+
+    resultats = []
+
+    cas_non_elec = selectionner_cas_non_electrique(profils)
+    if cas_non_elec:
+        resultats.append({
+            "score": 999,
+            "tag_ouverture": True,
+            "numero": cas_non_elec.get("numero", "?"),
+            "secteur": cas_non_elec.get("secteur", ""),
+            "secteur_normalise": cas_non_elec.get("secteur_normalise", ""),
+            "resume_pedagogique": cas_non_elec.get("resume_pedagogique", ""),
+            "erreur_declenchante": cas_non_elec.get("erreur_declenchante", ""),
+            "type_risque": cas_non_elec.get("type_risque", ""),
+            "gravite": cas_non_elec.get("gravite", ""),
+            "habilitations_concernees": cas_non_elec.get("habilitations_concernees", []),
+            "questions_animation": cas_non_elec.get("questions_animation", []),
+            "tags_norme": cas_non_elec.get("tags_norme", []),
+            "cause_organisationnelle": cas_non_elec.get("cause_organisationnelle", ""),
+        })
+
+    niveaux_groupe = set()
+    for p in profils:
+        for tache in p.get("q6_taches", []):
+            niveaux_groupe.update(MAPPING_TACHES_HABILITATIONS.get(tache, []))
 
     scores = []
     for fiche in CORPUS:
-        s = calculer_score(fiche, profils)
+        if fiche.get("type_risque") in ["non electrique", "non électrique"]:
+            continue
+        s = calculer_score_electrique(fiche, profils)
         if s > 0:
             scores.append((s, fiche))
-
+    # Pénaliser les cas déjà utilisés avec ce client
+    scores_ajustes = []
+    for s, fiche in scores:
+        unid = fiche.get("unid", "")
+        if unid in cas_deja_vus:
+            s = s // 3  # Pénalité 66% — toujours utilisable si pas d'alternative
+        scores_ajustes.append((s, fiche))
+    scores = scores_ajustes
     scores.sort(key=lambda x: x[0], reverse=True)
 
-    resultats = []
-    for score, fiche in scores[:nb]:
+    niveaux_couverts = set()
+    cas_selectionnes = []
+
+    for score, fiche in scores:
+        if len(cas_selectionnes) >= (nb - 1):
+            break
+        habs_fiche = set(fiche.get("habilitations_concernees", []))
+        nouveaux_niveaux = habs_fiche & niveaux_groupe - niveaux_couverts
+        if nouveaux_niveaux or len(cas_selectionnes) < 4:
+            cas_selectionnes.append((score, fiche))
+            niveaux_couverts.update(habs_fiche & niveaux_groupe)
+
+    if len(cas_selectionnes) < (nb - 1):
+        for score, fiche in scores:
+            if (score, fiche) not in cas_selectionnes:
+                cas_selectionnes.append((score, fiche))
+            if len(cas_selectionnes) >= (nb - 1):
+                break
+
+    for score, fiche in cas_selectionnes:
         resultats.append({
             "score": score,
+            "tag_ouverture": False,
             "numero": fiche.get("numero", "?"),
             "secteur": fiche.get("secteur", ""),
             "secteur_normalise": fiche.get("secteur_normalise", ""),
@@ -163,15 +325,23 @@ def calculer_recommandations(profils, nb=8):
             "cause_organisationnelle": fiche.get("cause_organisationnelle", ""),
         })
 
+    # Sauvegarder les cas utilisés pour la mémoire client
+    unids_utilises = [r.get("unid", "") for r in resultats if r.get("unid")]
+    # unid non présent dans resultats — on le récupère depuis les fiches
+    sauvegarder_cas_utilises([
+        f.get("unid","") for _, f in cas_selectionnes
+    ])
+
     return resultats
 
-# ── Routes ────────────────────────────────────────────────
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
 @app.route("/formateur")
+@login_required
 def formateur():
     return render_template("formateur.html")
 
@@ -187,10 +357,24 @@ def sondage(session_id):
     return render_template("sondage.html", session_id=session_id, session=session)
 
 @app.route("/resultats/<session_id>")
+@login_required
 def resultats(session_id):
     return render_template("resultats.html", session_id=session_id)
 
-# ── API ───────────────────────────────────────────────────
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    erreur = ""
+    if request.method == "POST":
+        if request.form.get("password") == MOT_DE_PASSE:
+            session["logged_in"] = True
+            return redirect(url_for("formateur"))
+        erreur = "Mot de passe incorrect"
+    return render_template("login.html", erreur=erreur)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 @app.route("/api/sessions", methods=["GET"])
 def get_sessions():
