@@ -8,9 +8,9 @@
 <style>
 :root {
   --noir: #0f0f0f;
-  --blanc: #f8f5ef;
-  --orange: #e85d04;
-  --orange-clair: #ffd166;
+  --blanc: #faf6ee;
+  --orange: #1a5cbb;
+  --orange-clair: #d4e4f7;
   --gris: #6b6b6b;
   --gris-clair: #e8e4dc;
   --rouge: #c1121f;
@@ -41,7 +41,7 @@ header h1 {
   letter-spacing: -0.02em;
 }
 
-header h1 span { color: var(--orange); }
+header h1 span { color: #f5a623; }
 
 .corpus-badge {
   font-family: 'DM Mono', monospace;
@@ -261,7 +261,10 @@ input:focus, select:focus {
 <body>
 
 <header>
-  <h1>Épicéa <span>Formation</span></h1>
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <img src="/static/logo.png" alt="TIM Training" style="height:42px;">
+    <h1>Épicéa <span>Formation</span></h1>
+  </div>
   <div class="corpus-badge" id="corpus-badge">Chargement...</div>
 </header>
 
@@ -382,9 +385,19 @@ async function chargerSessions() {
       <div class="session-actions">
         <button class="btn btn-outline" onclick="afficherQR('${s.id}')">QR</button>
         <button class="btn btn-primary" onclick="window.location='/resultats/${s.id}'">Résultats →</button>
+        <button class="btn btn-outline" onclick="supprimerSession('${s.id}', '${(s.nom||'').replace(/'/g, String.fromCharCode(39))}')"
+          title="Supprimer définitivement"
+          style="padding:0.75rem 0.8rem; color:#c1121f">🗑</button>
       </div>
     </div>
   `).join('');
+}
+
+
+async function supprimerSession(id, nom) {
+  if (!confirm(`Supprimer définitivement la session "${nom}" et toutes ses réponses ?\n\nCette action est irréversible.`)) return;
+  await fetch(`/api/sessions/${id}`, {method: 'DELETE'});
+  chargerSessions();
 }
 
 async function creerSession() {

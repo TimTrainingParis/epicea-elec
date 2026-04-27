@@ -8,8 +8,8 @@
 <style>
 :root {
   --noir: #0f0f0f;
-  --blanc: #f8f5ef;
-  --orange: #e85d04;
+  --blanc: #faf6ee;
+  --orange: #1a5cbb;
   --gris: #6b6b6b;
   --gris-clair: #e8e4dc;
   --rouge: #c1121f;
@@ -38,7 +38,7 @@ header h1 {
   font-size: 1.3rem;
 }
 
-header h1 span { color: var(--orange); }
+header h1 span { color: #f5a623; }
 
 .back-btn {
   color: var(--gris);
@@ -274,12 +274,54 @@ main { max-width: 900px; margin: 0 auto; padding: 2rem; }
   color: var(--gris);
   margin-top: 1rem;
 }
+
+.texte-accident {
+  background: var(--blanc);
+  border: 1px solid var(--gris-clair);
+  border-radius: 6px;
+  padding: 1rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #333;
+  max-height: 280px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-family: Georgia, serif;
+}
+
+.copy-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.btn-copy {
+  padding: 0.45rem 0.9rem;
+  border: 1.5px solid var(--gris-clair);
+  border-radius: 6px;
+  background: white;
+  font-size: 0.78rem;
+  font-family: "DM Sans", sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s;
+  color: var(--noir);
+}
+
+.btn-copy:hover { border-color: var(--orange); color: var(--orange); }
+.btn-copy.copied { border-color: var(--vert); color: var(--vert); }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Épicéa <span>Formation</span></h1>
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <img src="/static/logo.png" alt="TIM Training" style="height:42px;">
+    <h1>Épicéa <span>Formation</span></h1>
+  </div>
   <a href="/formateur" class="back-btn">← Retour</a>
 </header>
 
@@ -322,6 +364,50 @@ main { max-width: 900px; margin: 0 auto; padding: 2rem; }
 
   <div class="refresh-info">Actualisation automatique toutes les 15 secondes</div>
 
+  <!-- Notice utilisation -->
+  <div id="notice-outil" style="
+    background: white;
+    border: 1px solid var(--gris-clair);
+    border-left: 4px solid #f5a623;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+    color: #333;
+    line-height: 1.6;
+  ">
+    <strong style="color:#1a5cbb">💡 Comment utiliser ces outils pédagogiques</strong><br>
+    Pour chaque cas : <strong>📄 Télécharge le dossier .txt</strong> → glisse-le dans 
+    <em>NotebookLM, Claude ou ton outil IA préféré</em> → 
+    <strong>🎨 Colle le prompt</strong> → génère ta fiche accident, ton script formateur ou ton infographie.
+  </div>
+
+  <!-- Résumé de session -->
+  <div style="margin-top:2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <div class="section-titre" style="margin-bottom:0">Résumé de la session</div>
+      <button class="btn-copy" onclick="telechargerResumeSession()" style="font-size:0.85rem; padding:0.5rem 1rem;">
+        📄 Télécharger le résumé (.txt)
+      </button>
+    </div>
+    <div id="resume-session" style="
+      background: white;
+      border: 1px solid var(--gris-clair);
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: #333;
+    ">
+      <div style="color:var(--gris)">En attente des profils stagiaires...</div>
+    </div>
+    <div class="copy-actions" style="margin-top:0.8rem;">
+      <button class="btn-copy" onclick="copierPromptSession(this)">
+        🎨 Copier le prompt infographie de session
+      </button>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -339,10 +425,7 @@ function risqueBadge(r) {
   return `<span class="badge badge-orange">${court}</span>`;
 }
 
-async function charger() {
-  try {
-    const r = await fetch(`/api/resultats/${SESSION_ID}`);
-    const d = await r.json();
+function afficherResultats(d) {
 
     // Stats
     document.getElementById('stat-stagiaires').textContent = d.stats.nb_stagiaires;
@@ -397,7 +480,7 @@ async function charger() {
             </div>
             <div class="detail-section">
               <div class="detail-label">Habilitations concernées</div>
-              <div class="detail-content">${(cas.habilitations_concernees || []).join(', ') || '—'}</div>
+              <div class="detail-content">${(cas.habilitations_concernees || []).join(', ') || '—'}${cas.domaine_tension ? ' · Domaine : ' + cas.domaine_tension : ''}</div>
             </div>
             <div class="detail-section">
               <div class="detail-label">Références normatives</div>
@@ -405,14 +488,37 @@ async function charger() {
                 ${(cas.tags_norme || []).map(t => `<span class="tag">${t}</span>`).join('')}
               </div>
             </div>
+            ${cas.texte_accident ? `
+            <div class="detail-section">
+              <div class="detail-label">Récit complet de l'accident</div>
+              <div class="texte-accident" id="texte-${i}">${cas.texte_accident.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+              <div class="copy-actions">
+                <button class="btn-copy" onclick="copierTexte(${i}, this)">
+                  📋 Copier le texte
+                </button>
+                <button class="btn-copy" onclick="copierPromptInfographie(${i}, this, '${cas.numero}')">
+                  🎨 Copier le prompt infographie
+                </button>
+                <button class="btn-copy" onclick="telechargerDossier(${i}, '${cas.numero}')">
+                  📄 Télécharger le dossier (.txt)
+                </button>
+              </div>
+            </div>` : ''}
           </div>
         </div>
       `).join('');
     }
 
-  } catch(e) {
-    console.error(e);
-  }
+  mettreAJourResume(d);
+}
+
+async function charger() {
+  try {
+    const r = await fetch(`/api/resultats/${SESSION_ID}`);
+    const d = await r.json();
+    dernierNbStagiaires = d.stats.nb_stagiaires;
+    afficherResultats(d);
+  } catch(e) { console.error(e); }
 }
 
 function toggleDetail(i) {
@@ -420,8 +526,258 @@ function toggleDetail(i) {
   el.classList.toggle('open');
 }
 
+function copierTexte(i, btn) {
+  const el = document.getElementById(`texte-${i}`);
+  if (!el) return;
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    btn.textContent = '✓ Copié !';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '📋 Copier le texte';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function copierPromptInfographie(i, btn, numero) {
+  const el = document.getElementById(`texte-${i}`);
+  if (!el) return;
+  const texte = el.innerText;
+  const prompt = `Tu es formateur expert en habilitation électrique (NF C 18-510 A2).
+
+Le fichier joint contient le dossier complet de l'accident EPICEA n°${numero}.
+
+À partir de ce dossier, crée au choix :
+- Une fiche accident pour PowerPoint (titre / contexte / chronologie / erreur déclenchante / message clé)
+- Un script formateur de 2-3 minutes
+- Un prompt pour générer une infographie visuelle
+
+Contraintes : langage terrain, ne pas stigmatiser la victime, relier à la NF C 18-510.`
+
+  navigator.clipboard.writeText(prompt).then(() => {
+    btn.textContent = '✓ Prompt copié !';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '🎨 Copier le prompt infographie';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function telechargerDossier(i, numero) {
+  const el = document.getElementById(`texte-${i}`);
+  if (!el) return;
+
+  // Récupérer toutes les données de la carte
+  const card = el.closest('.cas-card');
+  const resume = card.querySelector('.cas-resume')?.innerText || '';
+  const erreur = card.querySelector('.cas-erreur')?.innerText?.replace('↳ ','') || '';
+  const causeEl = card.querySelectorAll('.detail-content');
+  const cause = causeEl[0]?.innerText || '';
+  const habilitations = causeEl[1]?.innerText || '';
+  const questions = Array.from(card.querySelectorAll('.questions-list li')).map((li,n) => `${n+1}. ${li.innerText}`).join('\n');
+  const tags = Array.from(card.querySelectorAll('.tag')).map(t => t.innerText).join(', ');
+  const texte = el.innerText;
+
+  const contenu = `ÉPICÉA — DOSSIER N°${numero}
+${'='.repeat(40)}
+
+RÉSUMÉ PÉDAGOGIQUE
+------------------
+${resume}
+
+ERREUR DÉCLENCHANTE
+-------------------
+${erreur}
+
+CAUSE ORGANISATIONNELLE
+-----------------------
+${cause}
+
+HABILITATIONS CONCERNÉES
+------------------------
+${habilitations}
+
+RÉFÉRENCES NORMATIVES
+---------------------
+${tags}
+
+QUESTIONS D'ANIMATION
+---------------------
+${questions}
+
+RÉCIT COMPLET DE L'ACCIDENT
+---------------------------
+${texte}
+
+${'='.repeat(40)}
+Source : Base EPICEA, INRS — www.inrs.fr
+Usage pédagogique — NF C 18-510`;
+
+  const blob = new Blob([contenu], {type: 'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `EPICEA_dossier_${numero}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Rechargement intelligent — seulement si nb stagiaires change
+let dernierNbStagiaires = -1;
+
+async function chargerSiChangement() {
+  try {
+    const r = await fetch(`/api/resultats/${SESSION_ID}`);
+    const d = await r.json();
+    const nb = d.stats.nb_stagiaires;
+    if (nb !== dernierNbStagiaires) {
+      dernierNbStagiaires = nb;
+      afficherResultats(d);
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function charger() {
+  try {
+    const r = await fetch(`/api/resultats/${SESSION_ID}`);
+    const d = await r.json();
+    dernierNbStagiaires = d.stats.nb_stagiaires;
+    afficherResultats(d);
+  } catch(e) { console.error(e); }
+}
+
+// Stocker les données de session pour résumé
+let donneesSession = null;
+
+function mettreAJourResume(d) {
+  donneesSession = d;
+  const el = document.getElementById('resume-session');
+  if (!el) return;
+
+  if (!d.profils || d.profils.length === 0) {
+    el.innerHTML = '<div style="color:var(--gris)">En attente des profils stagiaires...</div>';
+    return;
+  }
+
+  const envs = Object.entries(d.stats.environnements || {})
+    .sort((a,b) => b[1]-a[1])
+    .map(([k,v]) => k + ' (' + v + ')').join(', ');
+
+  const ancs = Object.entries(d.stats.anciennetes || {})
+    .sort((a,b) => b[1]-a[1])
+    .map(([k,v]) => {
+      const labels = {moins2:'<2 ans', '2a5':'2-5 ans', '5a10':'5-10 ans', plus10:'>10 ans'};
+      return (labels[k]||k) + ' (' + v + ')';
+    }).join(', ');
+
+  const cas = (d.recommandations || []).map((c,i) =>
+    (i+1) + '. [N°' + c.numero + '] ' + (c.tag_ouverture ? '🟡 ' : '') + c.resume_pedagogique.substring(0,80) + '...'
+  ).join('<br>');
+
+  el.innerHTML = `
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+      <div><strong>Groupe</strong><br>${d.stats.nb_stagiaires} stagiaires · ${d.stats.haute_tension} exposés HT · ${d.stats.electrises} électrisés</div>
+      <div><strong>Environnements</strong><br>${envs || '—'}</div>
+      <div><strong>Ancienneté</strong><br>${ancs || '—'}</div>
+      <div><strong>Urgences</strong><br>${d.stats.urgences} stagiaire(s)</div>
+    </div>
+    <strong>Cas sélectionnés</strong><br>
+    <div style="margin-top:0.4rem; line-height:1.8">${cas}</div>
+  `;
+}
+
+function telechargerResumeSession() {
+  if (!donneesSession) return;
+  const d = donneesSession;
+
+  const envs = Object.entries(d.stats.environnements || {})
+    .sort((a,b) => b[1]-a[1])
+    .map(([k,v]) => k + ' (' + v + ')').join(', ');
+
+  const ancs = Object.entries(d.stats.anciennetes || {})
+    .sort((a,b) => b[1]-a[1])
+    .map(([k,v]) => {
+      const labels = {moins2:'<2 ans', '2a5':'2-5 ans', '5a10':'5-10 ans', plus10:'>10 ans'};
+      return (labels[k]||k) + ' (' + v + ')';
+    }).join(', ');
+
+  const cas = (d.recommandations || []).map((c,i) =>
+    (i+1) + '. N°' + c.numero + ' — ' + c.resume_pedagogique + '\n   Erreur : ' + c.erreur_declenchante
+  ).join('\n\n');
+
+  const contenu = `ÉPICÉA FORMATION — RÉSUMÉ DE SESSION
+${'='.repeat(40)}
+
+PROFIL DU GROUPE
+----------------
+Stagiaires     : ${d.stats.nb_stagiaires}
+Exposés HT     : ${d.stats.haute_tension}
+Déjà électrisés: ${d.stats.electrises}
+Aux urgences   : ${d.stats.urgences}
+Environnements : ${envs || '—'}
+Ancienneté     : ${ancs || '—'}
+
+PROFILS INDIVIDUELS
+-------------------
+${d.profils.map(p => p.prenom + ' — ' + p.q1_metier + ' — ' + (p.q2_environnements||[]).join('/') + (p.q7_electrise && p.q7_electrise !== 'jamais' ? ' ⚡ électrisé' : '')).join('\n')}
+
+CAS RECOMMANDÉS
+---------------
+${cas}
+
+${'='.repeat(40)}
+Source : Base EPICEA, INRS — www.inrs.fr
+Usage pédagogique — NF C 18-510`;
+
+  const blob = new Blob([contenu], {type: 'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'EPICEA_resume_session.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copierPromptSession(btn) {
+  if (!donneesSession) return;
+  const d = donneesSession;
+  const cas = (d.recommandations || []).map((c,i) =>
+    (i+1) + '. N°' + c.numero + ' — ' + c.resume_pedagogique.substring(0,100)
+  ).join('\n');
+
+  const prompt = `Tu es formateur expert en habilitation électrique (NF C 18-510 A2).
+
+Voici le profil d'un groupe de ${d.stats.nb_stagiaires} stagiaires et les 8 cas d'accidents sélectionnés pour cette session.
+
+PROFIL DU GROUPE :
+- ${d.stats.haute_tension} exposé(s) à la haute tension
+- ${d.stats.electrises} déjà électrisé(s)
+- Environnements : ${Object.keys(d.stats.environnements||{}).join(', ')}
+
+CAS SÉLECTIONNÉS :
+${cas}
+
+Crée une infographie de synthèse de la session qui montre :
+1. Le profil du groupe (chiffres clés)
+2. Les 8 cas sous forme de mini-fiches visuelles
+3. Les thèmes récurrents et messages clés
+4. Le lien avec la NF C 18-510
+
+Style : sobre, professionnel, TIM Training (bleu #1a5cbb, jaune #f5a623).`;
+
+  navigator.clipboard.writeText(prompt).then(() => {
+    btn.textContent = '✓ Prompt copié !';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '🎨 Copier le prompt infographie de session';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
 charger();
-setInterval(charger, 15000);
+setInterval(chargerSiChangement, 15000);
 </script>
 </body>
 </html>

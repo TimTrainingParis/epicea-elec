@@ -8,8 +8,8 @@
 <style>
 :root {
   --noir: #0f0f0f;
-  --blanc: #f8f5ef;
-  --orange: #e85d04;
+  --blanc: #faf6ee;
+  --orange: #1a5cbb;
   --gris: #6b6b6b;
   --gris-clair: #e8e4dc;
 }
@@ -36,7 +36,7 @@ header h1 {
   font-size: 1.2rem;
 }
 
-header h1 span { color: var(--orange); }
+header h1 span { color: #f5a623; }
 
 .session-info {
   background: var(--orange);
@@ -206,7 +206,10 @@ input[type="text"]:focus {
 <body>
 
 <header>
-  <h1>Épicéa <span>Formation</span></h1>
+  <div style="display:flex; align-items:center; justify-content:center; gap:0.8rem;">
+    <img src="/static/logo.png" alt="TIM Training" style="height:36px;">
+    <h1>Épicéa <span>Formation</span></h1>
+  </div>
 </header>
 
 <div class="session-info" id="session-info">Chargement...</div>
@@ -432,16 +435,16 @@ input[type="text"]:focus {
     <div class="question-titre">Avez-vous déjà été électrisé ?</div>
     <div class="question-aide">Au travail ou à la maison. Cette information aide le formateur à adapter les échanges.</div>
     <div class="options">
-      <button class="option" onclick="select(this, 'q7', 'jamais')">
+      <button class="option" onclick="select(this, 'q7_electrise', 'jamais')">
         Non, jamais
       </button>
-      <button class="option" onclick="select(this, 'q7', 'maison')">
+      <button class="option" onclick="select(this, 'q7_electrise', 'maison')">
         Oui — à la maison
       </button>
-      <button class="option" onclick="select(this, 'q7', 'travail')">
+      <button class="option" onclick="select(this, 'q7_electrise', 'travail')">
         Oui — au travail
       </button>
-      <button class="option" onclick="select(this, 'q7', 'travail_maison')">
+      <button class="option" onclick="select(this, 'q7_electrise', 'travail_maison')">
         Oui — au travail et à la maison
       </button>
     </div>
@@ -518,7 +521,7 @@ function select(btn, question, valeur) {
   reponses[question] = val;
 
   // Afficher Q7b si électrisé
-  if (question === 'q7') {
+  if (question === 'q7_electrise') {
     const q7b = document.getElementById('q7b-block');
     q7b.style.display = (val === 'jamais') ? 'none' : 'block';
     if (val === 'jamais') reponses.q7_urgences = '';
