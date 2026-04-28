@@ -311,6 +311,94 @@ select.filtre:focus { outline: none; border-color: var(--orange); }
 
 .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
 
+/* Sections de détail */
+.detail-section { margin-top: 1rem; }
+
+.detail-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gris);
+  margin-bottom: 0.4rem;
+}
+
+.detail-content {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #333;
+}
+
+.questions-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.questions-list li {
+  padding: 0.7rem 1rem;
+  background: #fff8f0;
+  border-left: 3px solid var(--orange);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.tag {
+  padding: 0.2rem 0.6rem;
+  background: var(--gris-clair);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-family: 'DM Mono', monospace;
+  color: var(--gris);
+}
+
+.texte-accident {
+  background: var(--blanc);
+  border: 1px solid var(--gris-clair);
+  border-radius: 6px;
+  padding: 1rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #333;
+  max-height: 280px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-family: Georgia, serif;
+}
+
+.copy-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.btn-copy {
+  padding: 0.45rem 0.9rem;
+  border: 1.5px solid var(--gris-clair);
+  border-radius: 6px;
+  background: white;
+  font-size: 0.78rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s;
+  color: var(--noir);
+}
+
+.btn-copy:hover { border-color: var(--orange); color: var(--orange); }
+.btn-copy.copied { border-color: var(--vert); color: var(--vert); }
+
 .spinner {
   display: inline-block;
   width: 1.2rem;
@@ -544,40 +632,56 @@ function afficherResultats(d) {
   }
 
   container.innerHTML = d.resultats.map((f, i) => `
-    <div class="result-card" id="card-${i}" onclick="toggleCard(${i})">
-      <div class="result-header">
+    <div class="result-card" id="card-${i}">
+      <div class="result-header" onclick="toggleCard(${i})" style="cursor:pointer">
         <div class="result-resume" id="resume-${i}">
           <div class="clamped">${escHtml(f.resume_pedagogique || '–')}</div>
+          ${f.erreur_declenchante ? `<div style="font-size:0.82rem;color:var(--rouge);margin-top:0.3rem;font-style:italic">↳ ${escHtml(f.erreur_declenchante)}</div>` : ''}
         </div>
         <span class="result-numero">#${f.numero}</span>
       </div>
-      <div class="result-meta">
+      <div class="result-meta" onclick="toggleCard(${i})" style="cursor:pointer">
         ${badgeGravite(f.gravite)}
-        ${f.secteur_normalise ? `<span class="badge badge-secteur">${f.secteur_normalise}</span>` : ''}
-        ${f.type_risque ? `<span class="badge badge-risque">${f.type_risque}</span>` : ''}
-        ${f.domaine_tension && f.domaine_tension !== 'non applicable' ? `<span class="badge badge-hab">${f.domaine_tension}</span>` : ''}
+        ${f.secteur_normalise ? `<span class="badge badge-secteur">${escHtml(f.secteur_normalise)}</span>` : ''}
+        ${f.type_risque ? `<span class="badge badge-risque">${escHtml(f.type_risque)}</span>` : ''}
+        ${f.domaine_tension && f.domaine_tension !== 'non applicable' ? `<span class="badge badge-hab">${escHtml(f.domaine_tension)}</span>` : ''}
         ${(f.habilitations_concernees || []).slice(0,5).map(h =>
           `<span class="badge badge-hab">${escHtml(h)}</span>`).join('')}
         ${(f.habilitations_concernees || []).length > 5 ?
           `<span class="badge badge-norme">+${f.habilitations_concernees.length - 5}</span>` : ''}
       </div>
       <div class="result-detail" id="detail-${i}">
-        ${f.erreur_declenchante ? `
+        ${f.cause_organisationnelle ? `
         <div class="detail-section">
-          <div class="detail-label">Erreur déclenchante</div>
-          <div class="detail-texte">${escHtml(f.erreur_declenchante)}</div>
+          <div class="detail-label">Cause organisationnelle</div>
+          <div class="detail-content">${escHtml(f.cause_organisationnelle)}</div>
         </div>` : ''}
+        ${f.questions_animation && f.questions_animation.length ? `
+        <div class="detail-section">
+          <div class="detail-label">Questions d'animation</div>
+          <ul class="questions-list">
+            ${f.questions_animation.map(q => `<li>${escHtml(q)}</li>`).join('')}
+          </ul>
+        </div>` : ''}
+        <div class="detail-section">
+          <div class="detail-label">Habilitations concernées</div>
+          <div class="detail-content">${escHtml((f.habilitations_concernees || []).join(', ') || '—')}${f.domaine_tension && f.domaine_tension !== 'non applicable' ? ' · Domaine : ' + escHtml(f.domaine_tension) : ''}</div>
+        </div>
         ${f.tags_norme && f.tags_norme.length ? `
         <div class="detail-section">
-          <div class="detail-label">Tags NF C 18-510</div>
-          <div style="display:flex;flex-wrap:wrap;gap:0.3rem;">
-            ${f.tags_norme.map(t => `<span class="badge badge-norme">${escHtml(t)}</span>`).join('')}
+          <div class="detail-label">Références normatives</div>
+          <div class="tags-list">${f.tags_norme.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}</div>
+        </div>` : ''}
+        ${f.texte_accident ? `
+        <div class="detail-section">
+          <div class="detail-label">Récit complet de l'accident</div>
+          <div class="texte-accident" id="texte-${i}">${escHtml(f.texte_accident)}</div>
+          <div class="copy-actions">
+            <button class="btn-copy" onclick="copierTexte(${i}, this)">📋 Copier le texte</button>
+            <button class="btn-copy" onclick="copierPromptInfographie(${i}, this, '${escHtml(f.numero)}')">🎨 Copier le prompt infographie</button>
+            <button class="btn-copy" onclick="telechargerDossier(${i}, '${escHtml(f.numero)}')">📄 Télécharger le dossier (.txt)</button>
           </div>
         </div>` : ''}
-        <div class="detail-section">
-          <div class="detail-label">Secteur</div>
-          <div class="detail-texte">${escHtml(f.secteur || '–')}</div>
-        </div>
       </div>
     </div>
   `).join('');
@@ -588,6 +692,93 @@ function toggleCard(i) {
   const resume = document.getElementById(`resume-${i}`);
   card.classList.toggle('expanded');
   resume.classList.toggle('open');
+}
+
+function copierTexte(i, btn) {
+  const el = document.getElementById(`texte-${i}`);
+  if (!el) return;
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    btn.textContent = '✓ Copié !';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copier le texte'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function copierPromptInfographie(i, btn, numero) {
+  const prompt = `Tu es formateur expert en habilitation électrique (NF C 18-510 A2).
+
+Le fichier joint contient le dossier complet de l'accident EPICEA n°${numero}.
+
+À partir de ce dossier, crée au choix :
+- Une fiche accident pour PowerPoint (titre / contexte / chronologie / erreur déclenchante / message clé)
+- Un script formateur de 2-3 minutes
+- Un prompt pour générer une infographie visuelle
+
+Contraintes : langage terrain, ne pas stigmatiser la victime, relier à la NF C 18-510.`;
+  navigator.clipboard.writeText(prompt).then(() => {
+    btn.textContent = '✓ Prompt copié !';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '🎨 Copier le prompt infographie'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function telechargerDossier(i, numero) {
+  const el = document.getElementById(`texte-${i}`);
+  if (!el) return;
+  const card = el.closest('.result-card');
+  const resume = card.querySelector('.result-resume .clamped')?.innerText || '';
+  const erreur = card.querySelector('.result-resume div[style*="rouge"]')?.innerText?.replace('↳ ','') || '';
+  const sections = card.querySelectorAll('.detail-section');
+  let cause = '', habilitations = '', tags = '', questions = '';
+  sections.forEach(s => {
+    const label = s.querySelector('.detail-label')?.innerText || '';
+    const content = s.querySelector('.detail-content')?.innerText || '';
+    if (label.includes('Cause')) cause = content;
+    if (label.includes('Habilitation')) habilitations = content;
+    if (label.includes('Références')) tags = Array.from(s.querySelectorAll('.tag')).map(t => t.innerText).join(', ');
+    if (label.includes('Questions')) questions = Array.from(s.querySelectorAll('li')).map((li, n) => `${n+1}. ${li.innerText}`).join('\n');
+  });
+
+  const contenu = `ÉPICÉA — DOSSIER N°${numero}
+${'='.repeat(40)}
+
+RÉSUMÉ PÉDAGOGIQUE
+------------------
+${resume}
+
+ERREUR DÉCLENCHANTE
+-------------------
+${erreur}
+
+CAUSE ORGANISATIONNELLE
+-----------------------
+${cause}
+
+HABILITATIONS CONCERNÉES
+------------------------
+${habilitations}
+
+RÉFÉRENCES NORMATIVES
+---------------------
+${tags}
+
+QUESTIONS D'ANIMATION
+---------------------
+${questions}
+
+RÉCIT COMPLET DE L'ACCIDENT
+---------------------------
+${el.innerText}
+
+${'='.repeat(40)}
+Source : Base EPICEA, INRS — www.inrs.fr
+Usage pédagogique — NF C 18-510`;
+
+  const blob = new Blob([contenu], {type: 'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `EPICEA_dossier_${numero}.txt`; a.click();
+  URL.revokeObjectURL(url);
 }
 
 function badgeGravite(g) {

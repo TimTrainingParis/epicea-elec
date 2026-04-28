@@ -551,20 +551,7 @@ def api_recherche():
             if not all(t in haystack for t in termes):
                 continue
 
-        resultats.append({
-            "unid":                  fiche.get("unid", ""),
-            "numero":                fiche.get("numero", ""),
-            "secteur":               fiche.get("secteur", ""),
-            "secteur_normalise":     fiche.get("secteur_normalise", ""),
-            "resume_pedagogique":    fiche.get("resume_pedagogique", ""),
-            "erreur_declenchante":   fiche.get("erreur_declenchante", ""),
-            "type_risque":           fiche.get("type_risque", ""),
-            "domaine_tension":       fiche.get("domaine_tension", ""),
-            "gravite":               fiche.get("gravite", ""),
-            "habilitations_concernees": fiche.get("habilitations_concernees", []),
-            "tags_norme":            fiche.get("tags_norme", []),
-            "pertinence_electrique": fiche.get("pertinence_electrique", ""),
-        })
+        resultats.append(fiche_vers_dict(fiche))
 
     total = len(resultats)
     debut = (page - 1) * par_page
