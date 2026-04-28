@@ -7,7 +7,7 @@ Mappings normés : NF C 18-510 + A1 + A2 (juin 2023)
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from functools import wraps
-import json, sqlite3, uuid, os, qrcode, io, base64
+import json, sqlite3, uuid, os, qrcode, io, base64, unicodedata, re
 from datetime import datetime
 
 app = Flask(__name__)
@@ -501,6 +501,79 @@ def corpus_stats():
         "total": len(CORPUS),
         "haute_pertinence": len([d for d in CORPUS if d.get("pertinence_electrique")=="haute"]),
         "mortels": len([d for d in CORPUS if d.get("gravite")=="mortel"]),
+    })
+
+def _normaliser(t):
+    if not t:
+        return ""
+    t = t.lower()
+    t = unicodedata.normalize("NFD", t)
+    return "".join(c for c in t if unicodedata.category(c) != "Mn")
+
+@app.route("/recherche")
+@login_required
+def recherche():
+    return render_template("recherche.html")
+
+@app.route("/api/recherche", methods=["GET"])
+@login_required
+def api_recherche():
+    q          = request.args.get("q", "").strip()
+    habilitation = request.args.get("habilitation", "")
+    secteur    = request.args.get("secteur", "")
+    type_risque = request.args.get("type_risque", "")
+    gravite    = request.args.get("gravite", "")
+    page       = max(1, int(request.args.get("page", 1)))
+    par_page   = 20
+
+    termes = [_normaliser(t) for t in q.split() if t]
+
+    resultats = []
+    for fiche in CORPUS:
+        if habilitation and habilitation not in fiche.get("habilitations_concernees", []):
+            continue
+        if secteur and fiche.get("secteur_normalise", "") != secteur:
+            continue
+        if type_risque and fiche.get("type_risque", "") != type_risque:
+            continue
+        if gravite and fiche.get("gravite", "") != gravite:
+            continue
+
+        if termes:
+            haystack = _normaliser(" ".join(filter(None, [
+                fiche.get("resume_pedagogique", ""),
+                fiche.get("erreur_declenchante", ""),
+                fiche.get("cause_organisationnelle", ""),
+                fiche.get("secteur", ""),
+                " ".join(fiche.get("tags_norme", [])),
+                " ".join(fiche.get("mots_source", [])),
+            ])))
+            if not all(t in haystack for t in termes):
+                continue
+
+        resultats.append({
+            "unid":                  fiche.get("unid", ""),
+            "numero":                fiche.get("numero", ""),
+            "secteur":               fiche.get("secteur", ""),
+            "secteur_normalise":     fiche.get("secteur_normalise", ""),
+            "resume_pedagogique":    fiche.get("resume_pedagogique", ""),
+            "erreur_declenchante":   fiche.get("erreur_declenchante", ""),
+            "type_risque":           fiche.get("type_risque", ""),
+            "domaine_tension":       fiche.get("domaine_tension", ""),
+            "gravite":               fiche.get("gravite", ""),
+            "habilitations_concernees": fiche.get("habilitations_concernees", []),
+            "tags_norme":            fiche.get("tags_norme", []),
+            "pertinence_electrique": fiche.get("pertinence_electrique", ""),
+        })
+
+    total = len(resultats)
+    debut = (page - 1) * par_page
+    return jsonify({
+        "total":     total,
+        "page":      page,
+        "par_page":  par_page,
+        "pages":     max(1, (total + par_page - 1) // par_page),
+        "resultats": resultats[debut: debut + par_page],
     })
 
 if __name__ == "__main__":

@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Épicéa — Recherche dans le corpus</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --noir: #0f0f0f;
+  --blanc: #faf6ee;
+  --orange: #1a5cbb;
+  --orange-clair: #d4e4f7;
+  --gris: #6b6b6b;
+  --gris-clair: #e8e4dc;
+  --rouge: #c1121f;
+  --vert: #2d6a4f;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--blanc);
+  color: var(--noir);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+
+header {
+  background: var(--noir);
+  padding: 1.2rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header h1 {
+  font-family: 'DM Serif Display', serif;
+  color: var(--blanc);
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+}
+
+header h1 span { color: #f5a623; }
+
+.nav-back {
+  font-size: 0.85rem;
+  color: var(--gris);
+  text-decoration: none;
+  font-family: 'DM Mono', monospace;
+  transition: color 0.2s;
+}
+.nav-back:hover { color: var(--blanc); }
+
+main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+.page-titre {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.6rem;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.4rem;
+}
+
+.page-sous-titre {
+  font-size: 0.9rem;
+  color: var(--gris);
+  margin-bottom: 1.5rem;
+}
+
+/* Barre de recherche */
+.search-bar {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.search-input-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gris);
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 0.9rem 0.75rem 2.5rem;
+  border: 1.5px solid var(--gris-clair);
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+
+/* Filtres */
+.filtres {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+}
+
+.filtre-group { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.filtre-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gris);
+}
+
+select.filtre {
+  padding: 0.55rem 0.8rem;
+  border: 1.5px solid var(--gris-clair);
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b6b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  padding-right: 2rem;
+}
+
+select.filtre:focus { outline: none; border-color: var(--orange); }
+
+/* Barre résultats */
+.resultats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--gris-clair);
+}
+
+.resultats-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--gris);
+}
+
+.btn-reset {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--gris);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  text-decoration: underline;
+  padding: 0;
+}
+.btn-reset:hover { color: var(--rouge); }
+
+/* Cartes résultats */
+.resultats-grid { display: grid; gap: 0.8rem; }
+
+.result-card {
+  background: white;
+  border: 1px solid var(--gris-clair);
+  border-radius: 8px;
+  padding: 1.2rem 1.5rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.result-card:hover {
+  border-color: var(--orange);
+  box-shadow: 0 2px 8px rgba(26,92,187,0.08);
+}
+
+.result-card.expanded { border-color: var(--orange); }
+
+.result-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.result-numero {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--gris);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.result-resume {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.result-resume .clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.result-resume.open .clamped { -webkit-line-clamp: unset; overflow: visible; }
+
+.result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+}
+
+.badge-mortel   { background: #ffebee; color: var(--rouge); }
+.badge-grave    { background: #fff3e0; color: #e65100; }
+.badge-leger    { background: #f5f5f5; color: var(--gris); }
+.badge-secteur  { background: #e8f5e9; color: var(--vert); }
+.badge-hab      { background: var(--orange-clair); color: var(--orange); }
+.badge-risque   { background: #f3e5f5; color: #6a1b9a; }
+.badge-norme    { background: #e8eaf6; color: #283593; }
+.badge-pertinence-haute   { background: #e8f5e9; color: var(--vert); }
+.badge-pertinence-moyenne { background: #fff3e0; color: #e65100; }
+
+.result-detail {
+  display: none;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gris-clair);
+}
+
+.result-card.expanded .result-detail { display: block; }
+
+.detail-section { margin-bottom: 0.8rem; }
+
+.detail-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--gris);
+  margin-bottom: 0.3rem;
+}
+
+.detail-texte {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--gris-clair);
+}
+
+.page-btn {
+  padding: 0.5rem 0.9rem;
+  border: 1.5px solid var(--gris-clair);
+  border-radius: 6px;
+  background: white;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
+.page-btn.active { background: var(--orange); color: white; border-color: var(--orange); }
+.page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* État vide / chargement */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--gris);
+  background: white;
+  border: 1px solid var(--gris-clair);
+  border-radius: 8px;
+}
+
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+
+.spinner {
+  display: inline-block;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2px solid var(--gris-clair);
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 0.4rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Bouton recherche */
+.btn-search {
+  padding: 0.75rem 1.4rem;
+  background: var(--orange);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-search:hover { background: #154fa8; }
+
+@media (max-width: 600px) {
+  main { padding: 1rem; }
+  .filtres { grid-template-columns: 1fr 1fr; }
+  .search-bar { flex-direction: column; }
+  .result-header { flex-direction: column; gap: 0.4rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <img src="/static/logo.png" alt="TIM Training" style="height:42px;">
+    <h1>Épicéa <span>Formation</span></h1>
+  </div>
+  <a href="/formateur" class="nav-back">← Retour formateur</a>
+</header>
+
+<main>
+  <p class="page-titre">Recherche dans le corpus</p>
+  <p class="page-sous-titre" id="corpus-info">Chargement...</p>
+
+  <!-- Barre de recherche -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" class="search-input" id="q"
+             placeholder="Mots-clés : consignation, arc, chute, câble HTA..."
+             autocomplete="off">
+    </div>
+    <button class="btn-search" onclick="rechercher(1)">Rechercher</button>
+  </div>
+
+  <!-- Filtres -->
+  <div class="filtres">
+    <div class="filtre-group">
+      <span class="filtre-label">Habilitation</span>
+      <select class="filtre" id="f-habilitation" onchange="rechercher(1)">
+        <option value="">Toutes</option>
+        <optgroup label="BT — Basse tension">
+          <option value="B0">B0 — Voisinage BT</option>
+          <option value="B0V">B0V — Voisinage BT+</option>
+          <option value="BS">BS — Remplacement/connexion</option>
+          <option value="B1">B1 — Exécutant BT</option>
+          <option value="B1V">B1V — Exécutant voisinage BT</option>
+          <option value="B2">B2 — Chargé travaux BT</option>
+          <option value="B2V">B2V — Chargé travaux voisinage BT</option>
+          <option value="BR">BR — Intervention BT</option>
+          <option value="BC">BC — Consignation BT</option>
+          <option value="BE essai">BE essai</option>
+          <option value="BE mesure">BE mesure</option>
+          <option value="BE mesurage">BE mesurage</option>
+          <option value="BE vérification">BE vérification</option>
+          <option value="BE manœuvre">BE manœuvre</option>
+        </optgroup>
+        <optgroup label="HT — Haute tension">
+          <option value="H0">H0 — Voisinage HT</option>
+          <option value="H0V">H0V — Voisinage HT+</option>
+          <option value="H1">H1 — Exécutant HT</option>
+          <option value="H1V">H1V — Exécutant voisinage HT</option>
+          <option value="H2">H2 — Chargé travaux HT</option>
+          <option value="H2V">H2V — Chargé travaux voisinage HT</option>
+          <option value="HR">HR — Intervention HT</option>
+          <option value="HC">HC — Consignation HT</option>
+          <option value="HE essai">HE essai</option>
+          <option value="HE mesure">HE mesure</option>
+          <option value="HE manœuvre">HE manœuvre</option>
+        </optgroup>
+        <optgroup label="Autres">
+          <option value="habilitation absente">Habilitation absente</option>
+          <option value="BF">BF — Forage BT</option>
+          <option value="HF">HF — Forage HT</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="filtre-group">
+      <span class="filtre-label">Secteur</span>
+      <select class="filtre" id="f-secteur" onchange="rechercher(1)">
+        <option value="">Tous</option>
+        <option value="BTP">BTP</option>
+        <option value="industrie">Industrie</option>
+        <option value="tertiaire">Tertiaire</option>
+        <option value="services">Services</option>
+        <option value="transport">Transport</option>
+        <option value="collectivite">Collectivités</option>
+        <option value="commerce">Commerce</option>
+        <option value="agriculture">Agriculture</option>
+        <option value="logistique">Logistique</option>
+        <option value="autre">Autre</option>
+      </select>
+    </div>
+
+    <div class="filtre-group">
+      <span class="filtre-label">Type de risque</span>
+      <select class="filtre" id="f-type" onchange="rechercher(1)">
+        <option value="">Tous</option>
+        <option value="contact direct BT">Contact direct BT</option>
+        <option value="contact direct HTA">Contact direct HTA</option>
+        <option value="contact direct HTB">Contact direct HTB</option>
+        <option value="arc électrique">Arc électrique</option>
+        <option value="court-circuit">Court-circuit</option>
+        <option value="induction">Induction</option>
+        <option value="foudre">Foudre</option>
+        <option value="vehicule electrique">Véhicule électrique</option>
+        <option value="non electrique">Non électrique</option>
+        <option value="autre electrique">Autre électrique</option>
+      </select>
+    </div>
+
+    <div class="filtre-group">
+      <span class="filtre-label">Gravité</span>
+      <select class="filtre" id="f-gravite" onchange="rechercher(1)">
+        <option value="">Toutes</option>
+        <option value="mortel">Mortel</option>
+        <option value="grave">Grave</option>
+        <option value="léger">Léger</option>
+        <option value="inconnu">Inconnu</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- En-tête résultats -->
+  <div class="resultats-header">
+    <span class="resultats-count" id="count-label">—</span>
+    <button class="btn-reset" onclick="reinitialiser()">Réinitialiser les filtres</button>
+  </div>
+
+  <!-- Résultats -->
+  <div class="resultats-grid" id="resultats"></div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination"></div>
+</main>
+
+<script>
+let pageActuelle = 1;
+let totalPages = 1;
+let rechercheEnCours = false;
+
+async function chargerCorpusInfo() {
+  const r = await fetch('/api/corpus/stats');
+  const d = await r.json();
+  document.getElementById('corpus-info').textContent =
+    `${d.total} fiches accidents INRS EPICEA · ${d.haute_pertinence} haute pertinence électrique · ${d.mortels} accidents mortels`;
+}
+
+function getParams() {
+  return {
+    q:           document.getElementById('q').value.trim(),
+    habilitation: document.getElementById('f-habilitation').value,
+    secteur:     document.getElementById('f-secteur').value,
+    type_risque: document.getElementById('f-type').value,
+    gravite:     document.getElementById('f-gravite').value,
+  };
+}
+
+async function rechercher(page) {
+  if (rechercheEnCours) return;
+  rechercheEnCours = true;
+  pageActuelle = page;
+
+  const params = getParams();
+  const qs = new URLSearchParams({ ...params, page }).toString();
+
+  document.getElementById('resultats').innerHTML =
+    `<div class="empty-state"><span class="spinner"></span> Recherche...</div>`;
+  document.getElementById('pagination').innerHTML = '';
+
+  try {
+    const r = await fetch(`/api/recherche?${qs}`);
+    const d = await r.json();
+    totalPages = d.pages;
+    afficherResultats(d);
+    afficherPagination(d.page, d.pages, d.total);
+  } catch(e) {
+    document.getElementById('resultats').innerHTML =
+      `<div class="empty-state"><div class="icon">⚠</div><p>Erreur lors de la recherche.</p></div>`;
+  } finally {
+    rechercheEnCours = false;
+  }
+}
+
+function afficherResultats(d) {
+  const container = document.getElementById('resultats');
+  const p = getParams();
+  const actif = p.q || p.habilitation || p.secteur || p.type_risque || p.gravite;
+
+  document.getElementById('count-label').textContent =
+    d.total === 0 ? 'Aucun résultat' :
+    `${d.total} cas trouvé${d.total > 1 ? 's' : ''}` +
+    (d.pages > 1 ? ` — page ${d.page}/${d.pages}` : '');
+
+  if (d.total === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="icon">🔍</div>
+      <p>${actif ? 'Aucun cas ne correspond à ces critères.<br>Essayez d\'assouplir les filtres.' : 'Lancez une recherche ou sélectionnez un filtre.'}</p>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = d.resultats.map((f, i) => `
+    <div class="result-card" id="card-${i}" onclick="toggleCard(${i})">
+      <div class="result-header">
+        <div class="result-resume" id="resume-${i}">
+          <div class="clamped">${escHtml(f.resume_pedagogique || '–')}</div>
+        </div>
+        <span class="result-numero">#${f.numero}</span>
+      </div>
+      <div class="result-meta">
+        ${badgeGravite(f.gravite)}
+        ${f.secteur_normalise ? `<span class="badge badge-secteur">${f.secteur_normalise}</span>` : ''}
+        ${f.type_risque ? `<span class="badge badge-risque">${f.type_risque}</span>` : ''}
+        ${f.domaine_tension && f.domaine_tension !== 'non applicable' ? `<span class="badge badge-hab">${f.domaine_tension}</span>` : ''}
+        ${(f.habilitations_concernees || []).slice(0,5).map(h =>
+          `<span class="badge badge-hab">${escHtml(h)}</span>`).join('')}
+        ${(f.habilitations_concernees || []).length > 5 ?
+          `<span class="badge badge-norme">+${f.habilitations_concernees.length - 5}</span>` : ''}
+      </div>
+      <div class="result-detail" id="detail-${i}">
+        ${f.erreur_declenchante ? `
+        <div class="detail-section">
+          <div class="detail-label">Erreur déclenchante</div>
+          <div class="detail-texte">${escHtml(f.erreur_declenchante)}</div>
+        </div>` : ''}
+        ${f.tags_norme && f.tags_norme.length ? `
+        <div class="detail-section">
+          <div class="detail-label">Tags NF C 18-510</div>
+          <div style="display:flex;flex-wrap:wrap;gap:0.3rem;">
+            ${f.tags_norme.map(t => `<span class="badge badge-norme">${escHtml(t)}</span>`).join('')}
+          </div>
+        </div>` : ''}
+        <div class="detail-section">
+          <div class="detail-label">Secteur</div>
+          <div class="detail-texte">${escHtml(f.secteur || '–')}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleCard(i) {
+  const card = document.getElementById(`card-${i}`);
+  const resume = document.getElementById(`resume-${i}`);
+  card.classList.toggle('expanded');
+  resume.classList.toggle('open');
+}
+
+function badgeGravite(g) {
+  const map = {
+    mortel: ['badge-mortel', 'Mortel'],
+    grave:  ['badge-grave',  'Grave'],
+    'léger': ['badge-leger', 'Léger'],
+  };
+  const [cls, label] = map[g] || ['badge-gris', g || '?'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function afficherPagination(page, pages, total) {
+  if (pages <= 1) {
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+  const container = document.getElementById('pagination');
+  let html = `<button class="page-btn" onclick="rechercher(${page-1})" ${page===1?'disabled':''}>←</button>`;
+
+  const delta = 2;
+  let plage = new Set([1, pages]);
+  for (let p = Math.max(1, page - delta); p <= Math.min(pages, page + delta); p++) plage.add(p);
+  plage = [...plage].sort((a,b) => a-b);
+
+  let prev = null;
+  for (const p of plage) {
+    if (prev !== null && p - prev > 1) html += `<span style="color:var(--gris);padding:0 0.2rem">…</span>`;
+    html += `<button class="page-btn ${p===page?'active':''}" onclick="rechercher(${p})">${p}</button>`;
+    prev = p;
+  }
+
+  html += `<button class="page-btn" onclick="rechercher(${page+1})" ${page===pages?'disabled':''}>→</button>`;
+  container.innerHTML = html;
+}
+
+function reinitialiser() {
+  document.getElementById('q').value = '';
+  document.getElementById('f-habilitation').value = '';
+  document.getElementById('f-secteur').value = '';
+  document.getElementById('f-type').value = '';
+  document.getElementById('f-gravite').value = '';
+  document.getElementById('resultats').innerHTML = '';
+  document.getElementById('pagination').innerHTML = '';
+  document.getElementById('count-label').textContent = '—';
+}
+
+// Recherche sur Entrée
+document.getElementById('q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') rechercher(1);
+});
+
+chargerCorpusInfo();
+</script>
+</body>
+</html>
