@@ -552,6 +552,13 @@ select.filtre:focus { outline: none; border-color: var(--orange); }
     </div>
   </div>
 
+  <!-- Stats bar -->
+  <div id="stats-bar" style="display:none; font-family:'DM Mono',monospace; font-size:0.78rem; color:var(--gris); margin-bottom:0.8rem; display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+    <span id="stat-mortel" style="color:var(--rouge)"></span>
+    <span id="stat-grave" style="color:#e65100"></span>
+    <span id="stat-leger"></span>
+  </div>
+
   <!-- En-tête résultats -->
   <div class="resultats-header">
     <span class="resultats-count" id="count-label">—</span>
@@ -565,16 +572,35 @@ select.filtre:focus { outline: none; border-color: var(--orange); }
   <div class="pagination" id="pagination"></div>
 </main>
 
+<!-- Modal épingler -->
+<div id="modal-epingle" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:10px;padding:1.5rem;width:min(400px,90%);box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:0.4rem;">📌 Épingler dans une session</div>
+    <div style="font-size:0.82rem;color:var(--gris);margin-bottom:1rem;" id="modal-ep-titre"></div>
+    <div id="modal-sessions-list" style="display:flex;flex-direction:column;gap:0.5rem;max-height:250px;overflow-y:auto;"></div>
+    <button onclick="fermerModalEpingle()" style="margin-top:1rem;width:100%;padding:0.6rem;border:1.5px solid var(--gris-clair);border-radius:6px;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;">Annuler</button>
+  </div>
+</div>
+
 <script>
 let pageActuelle = 1;
 let totalPages = 1;
 let rechercheEnCours = false;
+let sessionsDisponibles = [];
+let epingleEnCours = null;
 
 async function chargerCorpusInfo() {
   const r = await fetch('/api/corpus/stats');
   const d = await r.json();
   document.getElementById('corpus-info').textContent =
     `${d.total} fiches accidents INRS EPICEA · ${d.haute_pertinence} haute pertinence électrique · ${d.mortels} accidents mortels`;
+}
+
+async function chargerSessions() {
+  try {
+    const r = await fetch('/api/sessions');
+    sessionsDisponibles = await r.json();
+  } catch(e) { sessionsDisponibles = []; }
 }
 
 function getParams() {
@@ -604,6 +630,7 @@ async function rechercher(page) {
     const d = await r.json();
     totalPages = d.pages;
     afficherResultats(d);
+    afficherStatsBarre(d);
     afficherPagination(d.page, d.pages, d.total);
   } catch(e) {
     document.getElementById('resultats').innerHTML =
@@ -680,8 +707,12 @@ function afficherResultats(d) {
             <button class="btn-copy" onclick="copierTexte(${i}, this)">📋 Copier le texte</button>
             <button class="btn-copy" onclick="copierPromptInfographie(${i}, this, '${escHtml(f.numero)}')">🎨 Copier le prompt infographie</button>
             <button class="btn-copy" onclick="telechargerDossier(${i}, '${escHtml(f.numero)}')">📄 Télécharger le dossier (.txt)</button>
+            <button class="btn-copy" onclick="ouvrirModalEpingle('${escHtml(f.unid)}', '${escHtml(f.numero)}')">📌 Épingler dans une session</button>
           </div>
-        </div>` : ''}
+        </div>` : `
+        <div class="copy-actions" style="margin-top:1rem">
+          <button class="btn-copy" onclick="ouvrirModalEpingle('${escHtml(f.unid)}', '${escHtml(f.numero)}')">📌 Épingler dans une session</button>
+        </div>`}
       </div>
     </div>
   `).join('');
@@ -834,12 +865,82 @@ function reinitialiser() {
   document.getElementById('count-label').textContent = '—';
 }
 
+function afficherStatsBarre(d) {
+  const bar = document.getElementById('stats-bar');
+  if (!d.total) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  const b = d.breakdown || {};
+  document.getElementById('stat-mortel').textContent = b.mortel ? `⚫ ${b.mortel} mortel${b.mortel>1?'s':''}` : '';
+  document.getElementById('stat-grave').textContent  = b.grave  ? `🔴 ${b.grave} grave${b.grave>1?'s':''}` : '';
+  document.getElementById('stat-leger').textContent  = b['léger'] ? `🟡 ${b['léger']} léger${b['léger']>1?'s':''}` : '';
+}
+
+function ouvrirModalEpingle(unid, numero) {
+  epingleEnCours = unid;
+  document.getElementById('modal-ep-titre').textContent = `Cas N°${numero}`;
+  const list = document.getElementById('modal-sessions-list');
+  if (!sessionsDisponibles.length) {
+    list.innerHTML = '<div style="color:var(--gris);font-size:0.85rem;text-align:center;padding:1rem">Aucune session active</div>';
+  } else {
+    list.innerHTML = sessionsDisponibles.map(s => `
+      <button onclick="epinglerDansSess('${s.id}', '${escHtml(s.nom || s.id)}')" style="
+        padding:0.7rem 1rem; border:1.5px solid var(--gris-clair); border-radius:6px;
+        background:white; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.9rem;
+        text-align:left; transition:border-color 0.2s;"
+        onmouseover="this.style.borderColor='var(--orange)'"
+        onmouseout="this.style.borderColor='var(--gris-clair)'">
+        <strong>${escHtml(s.nom || 'Sans titre')}</strong>
+        <span style="color:var(--gris);font-size:0.78rem;margin-left:0.5rem">${s.date || ''} · ${s.nb_reponses} stagiaire${s.nb_reponses>1?'s':''}</span>
+      </button>`).join('');
+  }
+  document.getElementById('modal-epingle').style.display = 'flex';
+}
+
+async function epinglerDansSess(sessionId, nomSess) {
+  if (!epingleEnCours) return;
+  await fetch(`/api/sessions/${sessionId}/cas_manuels`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({unid: epingleEnCours})
+  });
+  fermerModalEpingle();
+  // Feedback visuel bref
+  const flash = document.createElement('div');
+  flash.textContent = `✓ Épinglé dans "${nomSess}"`;
+  flash.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#0f0f0f;color:white;padding:0.7rem 1.4rem;border-radius:2rem;font-size:0.85rem;z-index:300;font-family:"DM Sans",sans-serif;';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 2500);
+}
+
+function fermerModalEpingle() {
+  document.getElementById('modal-epingle').style.display = 'none';
+  epingleEnCours = null;
+}
+
+// Fermer modal en cliquant l'overlay
+document.getElementById('modal-epingle').addEventListener('click', e => {
+  if (e.target === e.currentTarget) fermerModalEpingle();
+});
+
+// Lecture des URL params au chargement (ex: depuis resultats.html)
+function lireURLParams() {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('q'))           document.getElementById('q').value = p.get('q');
+  if (p.get('habilitation')) document.getElementById('f-habilitation').value = p.get('habilitation');
+  if (p.get('secteur'))     document.getElementById('f-secteur').value = p.get('secteur');
+  if (p.get('type_risque')) document.getElementById('f-type').value = p.get('type_risque');
+  if (p.get('gravite'))     document.getElementById('f-gravite').value = p.get('gravite');
+  if ([...p.values()].some(v => v)) rechercher(1);
+}
+
 // Recherche sur Entrée
 document.getElementById('q').addEventListener('keydown', e => {
   if (e.key === 'Enter') rechercher(1);
 });
 
 chargerCorpusInfo();
+chargerSessions();
+lireURLParams();
 </script>
 </body>
 </html>

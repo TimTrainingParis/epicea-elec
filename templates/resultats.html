@@ -356,6 +356,14 @@ main { max-width: 900px; margin: 0 auto; padding: 2rem; }
     <div style="color:var(--gris); font-size:0.85rem">En attente des réponses...</div>
   </div>
 
+  <!-- Cas épinglés manuellement -->
+  <div id="section-epingles" style="display:none">
+    <div class="section-titre" style="display:flex;align-items:center;gap:0.6rem;">
+      <span>📌</span> Cas épinglés manuellement
+    </div>
+    <div class="cas-list" id="cas-manuels-list" style="margin-bottom:1.5rem;"></div>
+  </div>
+
   <!-- Cas recommandés -->
   <div class="section-titre">Cas recommandés pour ce groupe</div>
   <div class="cas-list" id="cas-list">
@@ -425,6 +433,66 @@ function risqueBadge(r) {
   return `<span class="badge badge-orange">${court}</span>`;
 }
 
+function buildCasCard(cas, i, options = {}) {
+  const { epingle = false, offset = 0 } = options;
+  const idx = offset + i;
+  return `
+    <div class="cas-card" id="cascard-${epingle ? 'ep' : 'rec'}-${i}">
+      <div class="cas-header" onclick="toggleDetail('${epingle ? 'ep' : 'rec'}-${i}')">
+        <div>
+          <div class="cas-num">N° ${cas.numero}</div>
+          ${epingle ? '<div style="font-size:0.7rem;color:#1a5cbb;margin-top:0.2rem">📌 Épinglé</div>' : ''}
+        </div>
+        <div>
+          <div class="cas-resume">${cas.resume_pedagogique}</div>
+          <div class="cas-erreur">↳ ${cas.erreur_declenchante}</div>
+        </div>
+        <div class="cas-badges">
+          ${graviteBadge(cas.gravite)}
+          ${risqueBadge(cas.type_risque)}
+        </div>
+      </div>
+      <div class="cas-detail" id="detail-${ epingle ? 'ep' : 'rec' }-${i}">
+        <div class="detail-section">
+          <div class="detail-label">Cause organisationnelle</div>
+          <div class="detail-content">${cas.cause_organisationnelle || '—'}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Questions d'animation</div>
+          <ul class="questions-list">
+            ${(cas.questions_animation || []).map(q => `<li>${q}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Habilitations concernées</div>
+          <div class="detail-content">${(cas.habilitations_concernees || []).join(', ') || '—'}${cas.domaine_tension ? ' · Domaine : ' + cas.domaine_tension : ''}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Références normatives</div>
+          <div class="tags-list">
+            ${(cas.tags_norme || []).map(t => `<span class="tag">${t}</span>`).join('')}
+          </div>
+        </div>
+        ${cas.texte_accident ? `
+        <div class="detail-section">
+          <div class="detail-label">Récit complet de l'accident</div>
+          <div class="texte-accident" id="texte-${ epingle ? 'ep' : 'rec' }-${i}">${cas.texte_accident.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          <div class="copy-actions">
+            <button class="btn-copy" onclick="copierTexte('${ epingle ? 'ep' : 'rec' }-${i}', this)">📋 Copier le texte</button>
+            <button class="btn-copy" onclick="copierPromptInfographie('${ epingle ? 'ep' : 'rec' }-${i}', this, '${cas.numero}')">🎨 Copier le prompt infographie</button>
+            <button class="btn-copy" onclick="telechargerDossier('${ epingle ? 'ep' : 'rec' }-${i}', '${cas.numero}')">📄 Télécharger le dossier (.txt)</button>
+            <a class="btn-copy" href="/recherche?type_risque=${encodeURIComponent(cas.type_risque || '')}&secteur=${encodeURIComponent(cas.secteur_normalise || '')}" target="_blank" style="text-decoration:none">🔍 Cas similaires</a>
+            ${epingle ? `<button class="btn-copy" style="color:var(--rouge)" onclick="retirerEpingle('${cas.unid}')">× Retirer</button>` : ''}
+          </div>
+        </div>` : `
+        <div class="copy-actions" style="margin-top:1rem">
+          <a class="btn-copy" href="/recherche?type_risque=${encodeURIComponent(cas.type_risque || '')}&secteur=${encodeURIComponent(cas.secteur_normalise || '')}" target="_blank" style="text-decoration:none">🔍 Cas similaires</a>
+          ${epingle ? `<button class="btn-copy" style="color:var(--rouge)" onclick="retirerEpingle('${cas.unid}')">× Retirer</button>` : ''}
+        </div>`}
+      </div>
+    </div>`;
+}
+
 function afficherResultats(d) {
 
     // Stats
@@ -447,66 +515,23 @@ function afficherResultats(d) {
       `).join('');
     }
 
+    // Cas épinglés manuellement
+    const epSection = document.getElementById('section-epingles');
+    const epList = document.getElementById('cas-manuels-list');
+    const manuels = d.cas_manuels || [];
+    if (manuels.length > 0) {
+      epSection.style.display = '';
+      epList.innerHTML = manuels.map((cas, i) => buildCasCard(cas, i, { epingle: true })).join('');
+    } else {
+      epSection.style.display = 'none';
+    }
+
     // Cas recommandés
     const casEl = document.getElementById('cas-list');
     if (d.recommandations.length === 0) {
       casEl.innerHTML = '<div class="empty-state">En attente des profils stagiaires...</div>';
     } else {
-      casEl.innerHTML = d.recommandations.map((cas, i) => `
-        <div class="cas-card">
-          <div class="cas-header" onclick="toggleDetail(${i})">
-            <div>
-              <div class="cas-num">N° ${cas.numero}</div>
-            </div>
-            <div>
-              <div class="cas-resume">${cas.resume_pedagogique}</div>
-              <div class="cas-erreur">↳ ${cas.erreur_declenchante}</div>
-            </div>
-            <div class="cas-badges">
-              ${graviteBadge(cas.gravite)}
-              ${risqueBadge(cas.type_risque)}
-            </div>
-          </div>
-          <div class="cas-detail" id="detail-${i}">
-            <div class="detail-section">
-              <div class="detail-label">Cause organisationnelle</div>
-              <div class="detail-content">${cas.cause_organisationnelle || '—'}</div>
-            </div>
-            <div class="detail-section">
-              <div class="detail-label">Questions d'animation</div>
-              <ul class="questions-list">
-                ${(cas.questions_animation || []).map(q => `<li>${q}</li>`).join('')}
-              </ul>
-            </div>
-            <div class="detail-section">
-              <div class="detail-label">Habilitations concernées</div>
-              <div class="detail-content">${(cas.habilitations_concernees || []).join(', ') || '—'}${cas.domaine_tension ? ' · Domaine : ' + cas.domaine_tension : ''}</div>
-            </div>
-            <div class="detail-section">
-              <div class="detail-label">Références normatives</div>
-              <div class="tags-list">
-                ${(cas.tags_norme || []).map(t => `<span class="tag">${t}</span>`).join('')}
-              </div>
-            </div>
-            ${cas.texte_accident ? `
-            <div class="detail-section">
-              <div class="detail-label">Récit complet de l'accident</div>
-              <div class="texte-accident" id="texte-${i}">${cas.texte_accident.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-              <div class="copy-actions">
-                <button class="btn-copy" onclick="copierTexte(${i}, this)">
-                  📋 Copier le texte
-                </button>
-                <button class="btn-copy" onclick="copierPromptInfographie(${i}, this, '${cas.numero}')">
-                  🎨 Copier le prompt infographie
-                </button>
-                <button class="btn-copy" onclick="telechargerDossier(${i}, '${cas.numero}')">
-                  📄 Télécharger le dossier (.txt)
-                </button>
-              </div>
-            </div>` : ''}
-          </div>
-        </div>
-      `).join('');
+      casEl.innerHTML = d.recommandations.map((cas, i) => buildCasCard(cas, i)).join('');
     }
 
   mettreAJourResume(d);
@@ -521,9 +546,14 @@ async function charger() {
   } catch(e) { console.error(e); }
 }
 
-function toggleDetail(i) {
-  const el = document.getElementById(`detail-${i}`);
-  el.classList.toggle('open');
+function toggleDetail(id) {
+  const el = document.getElementById(`detail-${id}`);
+  if (el) el.classList.toggle('open');
+}
+
+async function retirerEpingle(unid) {
+  await fetch(`/api/sessions/${SESSION_ID}/cas_manuels/${unid}`, { method: 'DELETE' });
+  charger();
 }
 
 function copierTexte(i, btn) {

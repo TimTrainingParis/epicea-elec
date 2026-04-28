@@ -72,6 +72,7 @@ def init_db():
         ("masquee", "INTEGER DEFAULT 0"),
         ("cas_fixes", "TEXT"),
         ("nb_profils_fixes", "INTEGER DEFAULT 0"),
+        ("cas_manuels", "TEXT"),
     ]:
         try:
             c.execute(f"ALTER TABLE sessions ADD COLUMN {col} {definition}")
@@ -459,12 +460,13 @@ def get_resultats(session_id):
             "q7_electrise":row[9],"q7_urgences":row[10],"q8_contexte":row[11],
         })
     sess_row = c.execute(
-        "SELECT cas_fixes, nb_profils_fixes FROM sessions WHERE id=?", (session_id,)
+        "SELECT cas_fixes, nb_profils_fixes, cas_manuels FROM sessions WHERE id=?", (session_id,)
     ).fetchone()
     conn.close()
 
-    cas_fixes = sess_row[0] if sess_row else None
-    nb_fixes  = sess_row[1] if sess_row else 0
+    cas_fixes    = sess_row[0] if sess_row else None
+    nb_fixes     = sess_row[1] if sess_row else 0
+    cas_manuels_json = sess_row[2] if sess_row else None
 
     if profils and (cas_fixes is None or len(profils) != nb_fixes):
         recommandations = calculer_recommandations(profils, nb=8)
@@ -493,7 +495,48 @@ def get_resultats(session_id):
         stats["anciennetes"][anc] = stats["anciennetes"].get(anc,0)+1
         if p.get("q4_haute_tension","non") != "non": stats["haute_tension"] += 1
 
-    return jsonify({"profils":profils,"recommandations":recommandations,"stats":stats})
+    cas_manuels = []
+    if cas_manuels_json:
+        for unid in json.loads(cas_manuels_json):
+            fiche = CORPUS_INDEX.get(unid)
+            if fiche:
+                cas_manuels.append(fiche_vers_dict(fiche))
+
+    return jsonify({"profils":profils,"recommandations":recommandations,
+                    "cas_manuels":cas_manuels,"stats":stats})
+
+@app.route("/api/sessions/<session_id>/cas_manuels", methods=["POST"])
+@login_required
+def ajouter_cas_manuel(session_id):
+    unid = (request.json or {}).get("unid", "")
+    if not unid:
+        return jsonify({"error": "unid requis"}), 400
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    row = c.execute("SELECT cas_manuels FROM sessions WHERE id=?", (session_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Session introuvable"}), 404
+    cas = json.loads(row[0]) if row[0] else []
+    if unid not in cas:
+        cas.append(unid)
+    c.execute("UPDATE sessions SET cas_manuels=? WHERE id=?", (json.dumps(cas), session_id))
+    conn.commit(); conn.close()
+    return jsonify({"ok": True, "nb": len(cas)})
+
+@app.route("/api/sessions/<session_id>/cas_manuels/<unid>", methods=["DELETE"])
+@login_required
+def supprimer_cas_manuel(session_id, unid):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    row = c.execute("SELECT cas_manuels FROM sessions WHERE id=?", (session_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Session introuvable"}), 404
+    cas = [u for u in (json.loads(row[0]) if row[0] else []) if u != unid]
+    c.execute("UPDATE sessions SET cas_manuels=? WHERE id=?", (json.dumps(cas), session_id))
+    conn.commit(); conn.close()
+    return jsonify({"ok": True})
 
 @app.route("/api/corpus/stats", methods=["GET"])
 def corpus_stats():
@@ -555,11 +598,18 @@ def api_recherche():
 
     total = len(resultats)
     debut = (page - 1) * par_page
+
+    breakdown = {"mortel": 0, "grave": 0, "léger": 0, "inconnu": 0}
+    for r in resultats:
+        g = r.get("gravite") or "inconnu"
+        breakdown[g] = breakdown.get(g, 0) + 1
+
     return jsonify({
         "total":     total,
         "page":      page,
         "par_page":  par_page,
         "pages":     max(1, (total + par_page - 1) // par_page),
+        "breakdown": breakdown,
         "resultats": resultats[debut: debut + par_page],
     })
 
