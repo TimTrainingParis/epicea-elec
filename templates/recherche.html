@@ -776,8 +776,8 @@ function afficherResultats(d) {
             <button class="btn-copy" onclick="copierTexte(${i}, this)">📋 Copier le texte</button>
             <button class="btn-copy" onclick="copierPromptInfographie(${i}, this, '${escHtml(f.numero)}')">🎨 Copier le prompt infographie</button>
             <button class="btn-copy" onclick="telechargerDossier(${i}, '${escHtml(f.numero)}')">📄 Télécharger le dossier (.txt)</button>
-            <button class="btn-copy" onclick="ouvrirModalEpingle('${escHtml(f.unid)}', '${escHtml(f.numero)}')">📌 Épingler dans une session</button>
             <button class="btn-copy" onclick="ouvrirNotebookLM('${escHtml(f.numero)}', this)" style="background:#f0f4ff;border-color:#c5d4f5;">📓 Ouvrir dans NotebookLM</button>
+            <button class="btn-copy" onclick="ouvrirModalEpingle('${escHtml(f.unid)}', '${escHtml(f.numero)}')">📌 Épingler dans une session</button>
           </div>
         </div>` : `
         <div class="copy-actions" style="margin-top:1rem">
