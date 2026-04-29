@@ -399,6 +399,21 @@ select.filtre:focus { outline: none; border-color: var(--orange); }
 .btn-copy:hover { border-color: var(--orange); color: var(--orange); }
 .btn-copy.copied { border-color: var(--vert); color: var(--vert); }
 
+.result-card.selected { border-color: #f5a623; background: #fffbf0; }
+.btn-select {
+  padding: 0.35rem 0.8rem;
+  border: 1.5px solid var(--gris-clair);
+  border-radius: 6px;
+  background: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--gris);
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s;
+}
+.btn-select:hover { border-color: #f5a623; color: #0f0f0f; }
+.btn-select.active { background: #f5a623; border-color: #f5a623; color: #0f0f0f; font-weight: 700; }
+
 .spinner {
   display: inline-block;
   width: 1.2rem;
@@ -572,6 +587,13 @@ select.filtre:focus { outline: none; border-color: var(--orange); }
   <div class="pagination" id="pagination"></div>
 </main>
 
+<!-- Barre de sélection flottante -->
+<div id="barre-sel" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#0f0f0f;color:white;padding:0.75rem 1.2rem 0.75rem 1.5rem;border-radius:2rem;display:flex;align-items:center;gap:0.8rem;z-index:200;font-family:'DM Sans',sans-serif;font-size:0.9rem;box-shadow:0 4px 20px rgba(0,0,0,0.4);white-space:nowrap;">
+  <span id="barre-sel-count"></span>
+  <button onclick="telechargerSelection()" style="padding:0.45rem 1rem;background:#f5a623;color:#0f0f0f;border:none;border-radius:1rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.85rem;">↓ Télécharger (.txt)</button>
+  <button onclick="viderSelection()" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:1.1rem;line-height:1;padding:0.2rem 0.4rem;">✕</button>
+</div>
+
 <!-- Modal épingler -->
 <div id="modal-epingle" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:10px;padding:1.5rem;width:min(400px,90%);box-shadow:0 8px 32px rgba(0,0,0,0.2);">
@@ -588,6 +610,8 @@ let totalPages = 1;
 let rechercheEnCours = false;
 let sessionsDisponibles = [];
 let epingleEnCours = null;
+let selectionCas = new Map();
+let pageResultats = [];
 
 async function chargerCorpusInfo() {
   const r = await fetch('/api/corpus/stats');
@@ -641,6 +665,7 @@ async function rechercher(page) {
 }
 
 function afficherResultats(d) {
+  pageResultats = d.resultats;
   const container = document.getElementById('resultats');
   const p = getParams();
   const actif = p.q || p.habilitation || p.secteur || p.type_risque || p.gravite;
@@ -659,7 +684,7 @@ function afficherResultats(d) {
   }
 
   container.innerHTML = d.resultats.map((f, i) => `
-    <div class="result-card" id="card-${i}">
+    <div class="result-card${selectionCas.has(f.unid) ? ' selected' : ''}" id="card-${i}">
       <div class="result-header" onclick="toggleCard(${i})" style="cursor:pointer">
         <div class="result-resume" id="resume-${i}">
           <div class="clamped">${escHtml(f.resume_pedagogique || '–')}</div>
@@ -676,6 +701,9 @@ function afficherResultats(d) {
           `<span class="badge badge-hab">${escHtml(h)}</span>`).join('')}
         ${(f.habilitations_concernees || []).length > 5 ?
           `<span class="badge badge-norme">+${f.habilitations_concernees.length - 5}</span>` : ''}
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding:0.3rem 0 0;">
+        <button class="btn-select${selectionCas.has(f.unid) ? ' active' : ''}" id="btn-sel-${i}" onclick="event.stopPropagation();toggleSelection(${i})">${selectionCas.has(f.unid) ? '★ Sélectionné' : '☆ Sélectionner'}</button>
       </div>
       <div class="result-detail" id="detail-${i}">
         ${f.cause_organisationnelle ? `
@@ -810,6 +838,65 @@ Usage pédagogique — NF C 18-510`;
   const a = document.createElement('a');
   a.href = url; a.download = `EPICEA_dossier_${numero}.txt`; a.click();
   URL.revokeObjectURL(url);
+}
+
+function toggleSelection(i) {
+  const cas = pageResultats[i];
+  if (!cas || !cas.unid) return;
+  const dejaSelectionne = selectionCas.has(cas.unid);
+  if (dejaSelectionne) {
+    selectionCas.delete(cas.unid);
+  } else {
+    selectionCas.set(cas.unid, cas);
+  }
+  const selected = selectionCas.has(cas.unid);
+  const btn = document.getElementById(`btn-sel-${i}`);
+  const card = document.getElementById(`card-${i}`);
+  if (btn) { btn.textContent = selected ? '★ Sélectionné' : '☆ Sélectionner'; btn.classList.toggle('active', selected); }
+  if (card) card.classList.toggle('selected', selected);
+  mettreAJourBarreSelection();
+}
+
+function mettreAJourBarreSelection() {
+  const barre = document.getElementById('barre-sel');
+  const n = selectionCas.size;
+  if (n === 0) { barre.style.display = 'none'; return; }
+  barre.style.display = 'flex';
+  document.getElementById('barre-sel-count').textContent = `${n} cas sélectionné${n > 1 ? 's' : ''}`;
+}
+
+function viderSelection() {
+  selectionCas.clear();
+  document.querySelectorAll('.btn-select').forEach(btn => { btn.textContent = '☆ Sélectionner'; btn.classList.remove('active'); });
+  document.querySelectorAll('.result-card.selected').forEach(c => c.classList.remove('selected'));
+  mettreAJourBarreSelection();
+}
+
+function telechargerSelection() {
+  if (!selectionCas.size) return;
+  const cas = [...selectionCas.values()];
+  let txt = `ÉPICÉA — SÉLECTION DE ${cas.length} CAS\n${'='.repeat(50)}\n\n`;
+  cas.forEach((f, idx) => {
+    txt += `CAS ${idx + 1}/${cas.length} — DOSSIER N°${f.numero}\n${'-'.repeat(40)}\n\n`;
+    txt += `RÉSUMÉ PÉDAGOGIQUE\n${f.resume_pedagogique || '—'}\n\n`;
+    if (f.erreur_declenchante) txt += `ERREUR DÉCLENCHANTE\n${f.erreur_declenchante}\n\n`;
+    if (f.cause_organisationnelle) txt += `CAUSE ORGANISATIONNELLE\n${f.cause_organisationnelle}\n\n`;
+    if (f.habilitations_concernees?.length) txt += `HABILITATIONS CONCERNÉES\n${f.habilitations_concernees.join(', ')}\n\n`;
+    if (f.tags_norme?.length) txt += `RÉFÉRENCES NORMATIVES\n${f.tags_norme.join(' · ')}\n\n`;
+    if (f.questions_animation?.length) {
+      txt += `QUESTIONS D'ANIMATION\n`;
+      f.questions_animation.forEach((q, n) => txt += `${n + 1}. ${q}\n`);
+      txt += '\n';
+    }
+    if (f.texte_accident) txt += `RÉCIT COMPLET\n${f.texte_accident}\n\n`;
+    txt += '\n';
+  });
+  txt += `${'='.repeat(50)}\nSource : Base EPICEA, INRS — www.inrs.fr\nUsage pédagogique — NF C 18-510`;
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `EPICEA_selection_${cas.length}cas.txt`;
+  a.click();
 }
 
 function badgeGravite(g) {

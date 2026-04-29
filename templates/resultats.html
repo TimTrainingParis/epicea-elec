@@ -320,6 +320,21 @@ main { max-width: 900px; margin: 0 auto; padding: 2rem; }
 
 .btn-copy:hover { border-color: var(--orange); color: var(--orange); }
 .btn-copy.copied { border-color: var(--vert); color: var(--vert); }
+
+.cas-card.selected { border-color: #f5a623; background: #fffbf0; }
+.btn-select {
+  padding: 0.35rem 0.8rem;
+  border: 1.5px solid var(--gris-clair);
+  border-radius: 6px;
+  background: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--gris);
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s;
+}
+.btn-select:hover { border-color: #f5a623; color: #0f0f0f; }
+.btn-select.active { background: #f5a623; border-color: #f5a623; color: #0f0f0f; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -427,6 +442,8 @@ main { max-width: 900px; margin: 0 auto; padding: 2rem; }
 
 <script>
 const SESSION_ID = "{{ session_id }}";
+let selectionResultats = new Map();
+let casDataResultats = new Map();
 
 function graviteBadge(g) {
   if (g === 'mortel') return '<span class="badge badge-rouge">⚫ Mortel</span>';
@@ -458,6 +475,9 @@ function buildCasCard(cas, i, options = {}) {
           ${graviteBadge(cas.gravite)}
           ${risqueBadge(cas.type_risque)}
         </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding:0.3rem 0 0;">
+        <button class="btn-select" id="btn-sel-res-${epingle ? 'ep' : 'rec'}-${i}" onclick="event.stopPropagation();toggleSelectionResultats('${cas.unid}', '${epingle ? 'ep' : 'rec'}-${i}')">☆ Sélectionner</button>
       </div>
       <div class="cas-detail" id="detail-${ epingle ? 'ep' : 'rec' }-${i}">
         <div class="detail-section">
@@ -521,6 +541,9 @@ function afficherResultats(d) {
         </div>
       `).join('');
     }
+
+    // Stocker toutes les données pour la sélection
+    [...(d.cas_manuels || []), ...(d.recommandations || [])].forEach(c => casDataResultats.set(c.unid, c));
 
     // Cas épinglés manuellement
     const epSection = document.getElementById('section-epingles');
@@ -813,8 +836,75 @@ Style : sobre, professionnel, TIM Training (bleu #1a5cbb, jaune #f5a623).`;
   });
 }
 
+function toggleSelectionResultats(unid, btnId) {
+  const cas = casDataResultats.get(unid);
+  if (!cas) return;
+  if (selectionResultats.has(unid)) {
+    selectionResultats.delete(unid);
+  } else {
+    selectionResultats.set(unid, cas);
+  }
+  const selected = selectionResultats.has(unid);
+  const btn = document.getElementById(`btn-sel-res-${btnId}`);
+  const card = btn?.closest('.cas-card');
+  if (btn) { btn.textContent = selected ? '★ Sélectionné' : '☆ Sélectionner'; btn.classList.toggle('active', selected); }
+  if (card) card.classList.toggle('selected', selected);
+  mettreAJourBarreResultats();
+}
+
+function mettreAJourBarreResultats() {
+  const barre = document.getElementById('barre-sel-res');
+  const n = selectionResultats.size;
+  if (n === 0) { barre.style.display = 'none'; return; }
+  barre.style.display = 'flex';
+  document.getElementById('barre-sel-res-count').textContent = `${n} cas sélectionné${n > 1 ? 's' : ''}`;
+}
+
+function viderSelectionResultats() {
+  selectionResultats.clear();
+  document.querySelectorAll('#cas-list .btn-select, #cas-manuels-list .btn-select').forEach(btn => {
+    btn.textContent = '☆ Sélectionner'; btn.classList.remove('active');
+  });
+  document.querySelectorAll('.cas-card.selected').forEach(c => c.classList.remove('selected'));
+  mettreAJourBarreResultats();
+}
+
+function telechargerSelectionResultats() {
+  if (!selectionResultats.size) return;
+  const cas = [...selectionResultats.values()];
+  let txt = `ÉPICÉA — SÉLECTION DE ${cas.length} CAS\n${'='.repeat(50)}\n\n`;
+  cas.forEach((f, idx) => {
+    txt += `CAS ${idx + 1}/${cas.length} — DOSSIER N°${f.numero}\n${'-'.repeat(40)}\n\n`;
+    txt += `RÉSUMÉ PÉDAGOGIQUE\n${f.resume_pedagogique || '—'}\n\n`;
+    if (f.erreur_declenchante) txt += `ERREUR DÉCLENCHANTE\n${f.erreur_declenchante}\n\n`;
+    if (f.cause_organisationnelle) txt += `CAUSE ORGANISATIONNELLE\n${f.cause_organisationnelle}\n\n`;
+    if (f.habilitations_concernees?.length) txt += `HABILITATIONS CONCERNÉES\n${f.habilitations_concernees.join(', ')}\n\n`;
+    if (f.tags_norme?.length) txt += `RÉFÉRENCES NORMATIVES\n${f.tags_norme.join(' · ')}\n\n`;
+    if (f.questions_animation?.length) {
+      txt += `QUESTIONS D'ANIMATION\n`;
+      f.questions_animation.forEach((q, n) => txt += `${n + 1}. ${q}\n`);
+      txt += '\n';
+    }
+    if (f.texte_accident) txt += `RÉCIT COMPLET\n${f.texte_accident}\n\n`;
+    txt += '\n';
+  });
+  txt += `${'='.repeat(50)}\nSource : Base EPICEA, INRS — www.inrs.fr\nUsage pédagogique — NF C 18-510`;
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `EPICEA_selection_${cas.length}cas.txt`;
+  a.click();
+}
+
 charger();
 setInterval(chargerSiChangement, 15000);
 </script>
+
+<!-- Barre de sélection flottante -->
+<div id="barre-sel-res" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#0f0f0f;color:white;padding:0.75rem 1.2rem 0.75rem 1.5rem;border-radius:2rem;display:flex;align-items:center;gap:0.8rem;z-index:200;font-family:'DM Sans',sans-serif;font-size:0.9rem;box-shadow:0 4px 20px rgba(0,0,0,0.4);white-space:nowrap;">
+  <span id="barre-sel-res-count"></span>
+  <button onclick="telechargerSelectionResultats()" style="padding:0.45rem 1rem;background:#f5a623;color:#0f0f0f;border:none;border-radius:1rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.85rem;">↓ Télécharger (.txt)</button>
+  <button onclick="viderSelectionResultats()" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:1.1rem;line-height:1;padding:0.2rem 0.4rem;">✕</button>
+</div>
 </body>
 </html>
