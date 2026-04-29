@@ -777,10 +777,12 @@ function afficherResultats(d) {
             <button class="btn-copy" onclick="copierPromptInfographie(${i}, this, '${escHtml(f.numero)}')">🎨 Copier le prompt infographie</button>
             <button class="btn-copy" onclick="telechargerDossier(${i}, '${escHtml(f.numero)}')">📄 Télécharger le dossier (.txt)</button>
             <button class="btn-copy" onclick="ouvrirModalEpingle('${escHtml(f.unid)}', '${escHtml(f.numero)}')">📌 Épingler dans une session</button>
+            <button class="btn-copy" onclick="ouvrirNotebookLM('${escHtml(f.numero)}', this)" style="background:#f0f4ff;border-color:#c5d4f5;">📓 Ouvrir dans NotebookLM</button>
           </div>
         </div>` : `
         <div class="copy-actions" style="margin-top:1rem">
           <button class="btn-copy" onclick="ouvrirModalEpingle('${escHtml(f.unid)}', '${escHtml(f.numero)}')">📌 Épingler dans une session</button>
+          <button class="btn-copy" onclick="ouvrirNotebookLM('${escHtml(f.numero)}', this)" style="background:#f0f4ff;border-color:#c5d4f5;">📓 Ouvrir dans NotebookLM</button>
         </div>`}
       </div>
     </div>
@@ -879,6 +881,25 @@ Usage pédagogique — NF C 18-510`;
   const a = document.createElement('a');
   a.href = url; a.download = `EPICEA_dossier_${numero}.txt`; a.click();
   URL.revokeObjectURL(url);
+}
+
+function ouvrirNotebookLM(numero, btn) {
+  const prompt = `Tu es formateur expert en habilitation électrique (NF C 18-510 A2).
+
+Le fichier joint contient le dossier complet de l'accident EPICEA n°${numero}.
+
+À partir de ce dossier, crée au choix :
+- Une fiche accident pour PowerPoint (titre / contexte / chronologie / erreur déclenchante / message clé)
+- Un script formateur de 2-3 minutes
+- Un prompt pour générer une infographie visuelle
+
+Contraintes : langage terrain, ne pas stigmatiser la victime, relier à la NF C 18-510.`;
+  navigator.clipboard.writeText(prompt).then(() => {
+    window.open('https://notebooklm.google.com/', '_blank');
+    btn.textContent = '✓ Prompt copié — collez-le dans NotebookLM';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📓 Ouvrir dans NotebookLM'; btn.classList.remove('copied'); }, 3000);
+  });
 }
 
 function toggleSelection(i) {
