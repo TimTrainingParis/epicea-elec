@@ -314,7 +314,7 @@ def login():
     if request.method == "POST":
         if request.form.get("password") == MOT_DE_PASSE:
             session["logged_in"] = True
-            return redirect(url_for("formateur"))
+            return redirect(url_for("recherche"))
         erreur = "Mot de passe incorrect"
     return render_template("login.html", erreur=erreur)
 

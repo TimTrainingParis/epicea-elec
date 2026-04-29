@@ -43,7 +43,7 @@ header h1 {
 
 header h1 span { color: #f5a623; }
 
-.nav-back {
+.nav-sessions {
   font-size: 1rem;
   font-weight: 700;
   color: #0f0f0f;
@@ -52,8 +52,13 @@ header h1 span { color: #f5a623; }
   padding: 0.65rem 1.4rem;
   border-radius: 6px;
   transition: background 0.2s;
+  white-space: nowrap;
 }
-.nav-back:hover { background: #d48c00; }
+.nav-sessions:hover { background: #d48c00; }
+
+@media (max-width: 500px) {
+  .nav-sessions { padding: 0.5rem 0.9rem; font-size: 0.85rem; }
+}
 
 main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
 
@@ -488,7 +493,7 @@ select.filtre:focus { outline: none; border-color: var(--orange); }
     <img src="/static/logo.png" alt="TIM Training" style="height:42px;">
     <h1>Épicéa <span>Formation</span></h1>
   </div>
-  <a href="/formateur" class="nav-back">← Retour à l'Accueil</a>
+  <a href="/formateur" class="nav-sessions">📋 Mes sessions →</a>
 </header>
 
 <main>
