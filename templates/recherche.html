@@ -448,11 +448,34 @@ select.filtre:focus { outline: none; border-color: var(--orange); }
 
 .btn-search:hover { background: #154fa8; }
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
+  header { padding: 0.8rem 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  header img { height: 32px; }
+  header h1 { font-size: 1.1rem; }
+  .nav-back { padding: 0.5rem 0.9rem; font-size: 0.85rem; }
+
   main { padding: 1rem; }
-  .filtres { grid-template-columns: 1fr 1fr; }
+  .page-titre { font-size: 1.2rem; }
+
   .search-bar { flex-direction: column; }
-  .result-header { flex-direction: column; gap: 0.4rem; }
+  .btn-search { width: 100%; padding: 0.85rem; font-size: 1rem; }
+
+  .filtres { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  select.filtre { font-size: 0.85rem; padding: 0.5rem 1.8rem 0.5rem 0.65rem; }
+  .filtre-label { font-size: 0.65rem; }
+
+  .result-card { padding: 0.9rem 1rem; }
+  .result-header { flex-direction: column; gap: 0.3rem; }
+  .result-numero { font-size: 0.7rem; }
+
+  .copy-actions { flex-direction: column; }
+  .btn-copy { width: 100%; justify-content: center; }
+
+  #barre-sel { width: calc(100% - 2rem); left: 1rem; transform: none; flex-wrap: wrap; justify-content: center; border-radius: 12px; }
+}
+
+@media (max-width: 380px) {
+  .filtres { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -568,6 +591,14 @@ select.filtre:focus { outline: none; border-color: var(--orange); }
         <option value="inconnu">Inconnu</option>
       </select>
     </div>
+  </div>
+
+  <!-- Notice utilisation -->
+  <div style="background:white;border:1px solid var(--gris-clair);border-left:4px solid #f5a623;border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;font-size:0.85rem;color:#333;line-height:1.6;">
+    <strong style="color:#1a5cbb">💡 Comment utiliser ces outils pédagogiques</strong><br>
+    Pour chaque cas : <strong>📄 Télécharge le dossier .txt</strong> → glisse-le dans
+    <em>NotebookLM, Claude ou ton outil IA préféré</em> →
+    <strong>🎨 Colle le prompt</strong> → génère ta fiche accident, ton script formateur ou ton infographie.
   </div>
 
   <!-- Stats bar -->
